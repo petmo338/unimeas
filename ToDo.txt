@@ -1,0 +1,15 @@
+Todo!
+
+Workaround for slow plotting. Plot only a window, and also fix size of allData
+
+Sourcemeter plugin
+Cap-meter plugin
+Temprature controller plugin
+
+Legend show all channels, not just the active ones
+Enable/disable channels in plot
+
+
+
+Make measurement sweep task
+Instrument plugins for this task

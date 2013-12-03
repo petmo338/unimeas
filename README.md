@@ -7,11 +7,12 @@ Uses Enthought Canopys Traits and TraitsUI.
 Status
 ======
 
-Very much work in progress right now! Not useable.
+Very much work in progress right now! Not usable.
 
 Dependencies
 ============
+[Canopy](http://www.enthought.com/)  
+[PyQtGraph](http://pyqtgraph.org/)  
+[PyDAQmx](http://pythonhosted.org/PyDAQmx/)  
+[pg8000](http://pybrary.net/pg8000/)  
 
-[PyQtGraph](http://pyqtgraph.org/)
-PyDAQmx
-pg8000

@@ -8,7 +8,7 @@ from traitsui.api import View
 from generic_pane import GenericPane
 from instrument_help_pane import InstrumentHelpPane
 
-from measure_over_time_pane import MeasureOverTimePane
+#from measure_over_time_pane import MeasureOverTimePane
 from instruments.i_instrument import IInstrument
 from sql_panel import SQLPanel
 from gasmixer_panel import GasMixerPanel

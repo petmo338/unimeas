@@ -1,6 +1,7 @@
 # Enthought library imports.
 from pyface.tasks.action.api import SGroup, SMenu, SMenuBar, \
     TaskToggleGroup, DockPaneToggleGroup
+from pyface.action.api import Group
 from pyface.tasks.api import Task, TaskLayout, Tabbed, PaneItem, Splitter, TraitsTaskPane
 from traits.api import Any, List, Int, Event, Instance, on_trait_change, DelegatesTo, PrototypedFrom
 from traitsui.api import View
@@ -14,6 +15,7 @@ from sql_panel import SQLPanel
 from gasmixer_panel import GasMixerPanel
 from gpio_panel import GPIOPanel
 from plot_panel import PlotPanel
+from instrument_show_group import InstrumentShowGroup
 #import pdb
 from numpy import hstack
 import logging
@@ -35,8 +37,8 @@ class MeasureOverTimeTask(Task):
 
     menu_bar = SMenuBar(SMenu(id='File', name='&File'),
                         SMenu(id='Edit', name='&Edit'),
-                        SMenu(DockPaneToggleGroup(),  id='Measurement', name='&View'),
-                        SMenu(id='Instrument', name='&Instrument'))
+                        SMenu(DockPaneToggleGroup(),  id='Measurement', name='&Panels'),
+                        SMenu(InstrumentShowGroup(), id='Instrument', name='&Instrument'))
 
     active_instrument = Instance(IInstrument)
     sql_panel = Instance(SQLPanel)
@@ -141,7 +143,7 @@ class MeasureOverTimeTask(Task):
                 self.plot_panel]
         
     #### Trait change handlers ################################################
-
+    @on_trait_change('active_instrument')
     def _update_active_instrument(self):
         self.active_instrument = self.instruments[0]
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')

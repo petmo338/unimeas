@@ -64,7 +64,7 @@ class SourceMeter(HasTraits):
     output_channels = Dict({0: 'smua'})
     """ Must not have overlapping names \ 
         i.e. ai1, ai12, ai13 will generate error """
-
+    enabled_channels = List(Bool)
     instrument = Instance(visa.Instrument)
     acquisition_thread = Instance(AcquisitionThread)
     selected_device = Str 
@@ -177,7 +177,10 @@ class SourceMeter(HasTraits):
         else:
             self.start()    
             self.button_label = 'Stop'
-                             
+    
+    def _enabled_channels_default(self):
+        return [True] * 1
+                                                      
     def start(self):
         self.instrument.write('reset()')
         self.instrument.write('digio.writeprotect = 0')
@@ -223,7 +226,9 @@ class SourceMeter(HasTraits):
             self.acquisition_thread.wants_abort = True
             while self.acquisition_thread.isAlive():
                 sleep(0.1)
-        self.instrument.write('smua.source.output = smua.OUTPUT_OFF')
+        
+        if type(self.instrument) == visa.Instrument:
+            self.instrument.write('smua.source.output = smua.OUTPUT_OFF')
         self.running = False
 
         

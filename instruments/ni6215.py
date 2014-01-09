@@ -21,7 +21,7 @@ class CallbackTask(Task, HasTraits):
     def __init__(self):
         super(CallbackTask, self).__init__()
         self.logger = logging.getLogger(__name__ + 'CallbackTask')
-    
+
     def setup(self, device, channels, sampling_interval):
 #        self.ouput = zeros(len(channels))
         self.data = zeros(16)
@@ -29,7 +29,7 @@ class CallbackTask(Task, HasTraits):
             self.logger.info('Adding %s', device + '/' + channel)
             self.CreateAIVoltageChan(device + '/' + channel, "", DAQmx_Val_RSE,\
             -10.0,10.0, DAQmx_Val_Volts, None)
-            
+
         self.CfgSampClkTiming("", 1/sampling_interval ,DAQmx_Val_Rising, \
             DAQmx_Val_ContSamps, 1)
         self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, \
@@ -37,7 +37,7 @@ class CallbackTask(Task, HasTraits):
         self.AutoRegisterDoneEvent(0)
         self.sample_number = 0
         self.start_time = time()
-        
+
     def EveryNCallback(self):
         self.sample_number += 1
         out = []
@@ -50,7 +50,7 @@ class CallbackTask(Task, HasTraits):
 #        self.logger.info('out: %s', out)
         self.output = out
 
-              
+
     def DoneCallback(self, status):
         self.logger.info("Status", status.value)
         return 0 # The function should return an integer
@@ -65,7 +65,7 @@ class NI6215(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
     CHANNEL_CELL_WIDTH = 25.0
     implements(IInstrument)
-    
+
     sampling_interval = Range(0.05, 10, 1)
     start_stop = Event
     refresh_list = Button
@@ -73,7 +73,7 @@ class NI6215(HasTraits):
     ai1 =Bool(False)
     ai2 =Bool(False)
     ai3 =Bool(False)
-    ai4 =Bool(False)    
+    ai4 =Bool(False)
     ai5 =Bool(False)
     ai6 =Bool(False)
     ai7 =Bool(False)
@@ -93,7 +93,6 @@ class NI6215(HasTraits):
     acquired_data = List(Dict)
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
-    channel_state = List
     parameter_group = Group(
         Item('sampling_interval', enabled_when='not running'),
         show_border = True)
@@ -131,8 +130,8 @@ class NI6215(HasTraits):
         self.on_trait_change(self.add_data, 'acqusition_task.output')
         self.on_trait_change(self.channel_changed, 'ai+')
         self.ai0 = self.ai1 = self.ai2 = self.ai3 = True
-            
-    def _channel_state_default(self):
+
+    def _enabled_channels_default(self):
         return [False] * 16
 
     def __available_devices_map_default(self):
@@ -151,7 +150,7 @@ class NI6215(HasTraits):
             if a.startswith('PCI-'):
                 PyDAQmx.DAQmxGetDevSerialNum(d, serial)
                 devices.append((d, a + ' - In computer'))
-        retval = dict((device[0], device[1]) for device in devices) 
+        retval = dict((device[0], device[1]) for device in devices)
         self.logger.info('_available_devices_map_default %s', retval)
         return retval
 
@@ -159,30 +158,30 @@ class NI6215(HasTraits):
     def __available_devices_map_changed(self):
         if self.selected_device not in self._available_devices_map.keys():
             self.selected_device = self._available_devices_map.items()[0][0]
-        
+
     def _selected_device_default(self):
         return self._available_devices_map.items()[0][0]
-                    
+
     def _refresh_list_fired(self):
         self._available_devices_map = self.__available_devices_map_default()
         self.__available_devices_map_changed()
-        
+
     def add_data(self):
         data = self.acqusition_task.output
         if len(data) < 18:
             return
         d = dict()
-        for i, enabled in enumerate(self.channel_state):
-            if enabled:
-                d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-                                dict({self.y_units[0]:data[i + 2]}))
-            else:
-                d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-                                dict({}))
+        for i, enabled in enumerate(self.enabled_channels):
+#            if enabled:
+            d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
+                            dict({self.y_units[0]:data[i + 2]}))
+#            else:
+#                d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
+#                                dict({}))
        # self.logger.info('d: %s', d)
 
         self.acquired_data.append(d)
-            
+
     #### 'IInstrument' interface #############################################
     name = Unicode('NI-DAQmx')
     x_units = Dict({0:'SampleNumber', 1:'Time'})
@@ -192,28 +191,29 @@ class NI6215(HasTraits):
                             4:'ai04', 5:'ai05', 6:'ai06', 7:'ai07', \
                             8:'ai08', 9:'ai09', 10:'ai10', 11:'ai11', \
                             12:'ai12', 13:'ai13', 14:'ai14', 15:'ai15'})
+    enabled_channels = List(Bool)
 
     def start(self):
         self.running = True
         self.acq_start_time = time()
         self.acqusition_task = CallbackTask()
-        enabled_channels = []
-        for i, enabled in enumerate(self.channel_state):
+        channels = []
+        for i, enabled in enumerate(self.enabled_channels):
             if enabled:
-                enabled_channels.append('ai' + str(i)) 
+               channels.append('ai' + str(i))
         self.acqusition_task.setup(self.selected_device, \
-            enabled_channels, self.sampling_interval)
+            channels, self.sampling_interval)
         self.acqusition_task.StartTask()
 
     def stop(self):
-        self.logger.info('stop()')      
+        self.logger.info('stop()')
         self.running = False
         self.acqusition_task.StopTask()
         self.acqusition_task.ClearTask()
-        
+
 
     ##########################################################################
-                  
+
     def _start_stop_fired(self, old, new):
         if self.running:
             self.button_label= 'Start'
@@ -223,11 +223,11 @@ class NI6215(HasTraits):
             self.start()
 
 
-    def channel_changed(self, obj, name, new):       
-        self.channel_state[int(name[2:])] = new
+    def channel_changed(self, obj, name, new):
+        self.enabled_channels[int(name[2:])] = new
 
-    
-            
+
+
 if __name__ == '__main__':
     l = logging.getLogger()
     console = logging.StreamHandler()
@@ -242,7 +242,7 @@ if __name__ == '__main__':
 #    d.tracer = SimpleTracer()
 #    d.on_trait_change(d._log_changed)
 #    d.traits_view = View(d.parameter_group)
-    
+
 #    d.tracer.configure_traits()
 #    d.configure_traits()
 
@@ -259,6 +259,5 @@ if __name__ == '__main__':
 #    a.start()
 #    sleep(2)
 #    a.wants_abort = True
-    
-#    a.data
 
+#    a.data

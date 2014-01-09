@@ -2,6 +2,7 @@
 from qtgraph_editor import QTGraphWidgetEditor
 from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, List, Array
 from traitsui.api import Item, View, Handler, ButtonEditor, EnumEditor, HGroup, spring, Label
+from instruments.i_instrument import IInstrument
 import pyqtgraph as pg
 import numpy as np
 import logging
@@ -25,12 +26,15 @@ class PlotPanel(HasTraits):
     index = Int(0)
     selected_x_unit = Int(0)
     selected_y_unit = Int(0)
+    plot_size = Int(DATA_LINES)
+
+    instrument = Instance(IInstrument)
     traits_view = View(Item('plot_widget', editor = QTGraphWidgetEditor(), show_label = False),
                        HGroup(Label('y-unit: '), Item('selected_y_unit',
                             editor = EnumEditor(name='y_units'), show_label = False),
                             Label('x-unit: '), Item('selected_x_unit',
                             editor = EnumEditor(name='x_units'), show_label = False)))
-    
+
     def _plot_widget_default(self):
         plot = pg.PlotWidget()
         self.vLine = pg.InfiniteLine(angle=90, movable=False, pen = ({'color' : '80808080', 'width': 1}))
@@ -42,21 +46,21 @@ class PlotPanel(HasTraits):
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
 
-             
+
 #        logger.info('_plot_default')
 
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         plot.sigRangeChanged.connect(self.rangeChanged)
         return plot
-    
+
     def rangeChanged(self, evt):
 #        logger.info('rangeChanged x %f, y: %f', self.plot_widget.getPlotItem().getViewBox().viewRect().right(),\
 #            self.plot_widget.getPlotItem().getViewBox().viewRect().top())
-        
+
         self.label.setPos(self.plot_widget.getPlotItem().getViewBox().viewRect().right(), \
             self.plot_widget.getPlotItem().getViewBox().viewRect().top())
-            
-                
+
+
     def mouseMoved(self, evt):
 
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
@@ -67,61 +71,102 @@ class PlotPanel(HasTraits):
             self.label.setText("x=%0.3f,  y=%0.3f" % (mousePoint.x(), mousePoint.y()))
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
-    
-    def configure_plots(self, plots, data_units, x_units, y_units):
-#        logger.info('configure_plots')
+
+    def update_visible_plots(self, instrument, name, old, new):
+        if not hasattr(instrument, 'enabled_channels'):
+            return
+#        logger.info('otc update_visible_plots')
+
+        self.plot_widget.clearPlots()
+#        for plot in self.plots:
+#            self.plot_widget.removeItem(plot)
+#        for i in xrange(len(instrument.enabled_channels)):
+#            self.plot_widget.removeItem(self.plots[instrument.output_channels[i]])
+#            logger.info('%s', self.plot_widget.getPlotItem().legend.items)
+#            self.plot_widget.getPlotItem().legend.removeItem(instrument.output_channels[i])
+        legendNames = [l.text for a,l in self.legend.items]
+ #       logger.info('legendNames: %s', legendNames)
+        for name in legendNames:
+            self.legend.removeItem(name)
+#        for sample, label in self.legend.items:
+#            logger.info('label.text %s', label.text)
+#            self.legend.removeItem(label.text)
+#        logger.info('items: %s', self.legend.items)
+        for i in xrange(len(instrument.enabled_channels)):
+            if instrument.enabled_channels[i] == True:
+                self.plot_widget.addItem(self.plots[instrument.output_channels[i]])
+#                self.legend.addItem(self.plots[instrument.output_channels[i]],
+#                    instrument.output_channels[i])
+
+
+    def configure_plots(self, instrument):
+        if not hasattr(self, 'legend'):
+            self.legend = self.plot_widget.getPlotItem().addLegend()
+        legendNames = [l.text for a,l in self.legend.items]
+        for name in legendNames:
+            self.legend.removeItem(name)
+#        logger.info('configure_plots, legend: %s', self.legend.items)
         #plotnames = self.controller.time_plot.plots.keys()
         #for plot in plotnames:
         #    self.controller.time_plot.delplot(plot)
         #for data in [n for n in self.controller.time_data.list_data() if not n.startswith('index')]:
         #    self.controller.time_data.del_data(data)
+
+
         self.plot_widget.enableAutoRange(True, True)
-#        self.plot_widget.clear()
+        self.plot_widget.clear()
         self.plots = {}
-        self.data = np.zeros(shape=(len(data_units), DATA_LINES), dtype=np.float32)
-        for i in xrange(len(plots)):
-            self.plots[plots[i]] = pg.PlotCurveItem(x=[0], y=[0], pen = COLOR_MAP[i], name=plots[i])
-            self.plot_widget.addItem(self.plots[plots[i]])
-            
+        self.data = np.zeros(shape=(len(instrument.output_channels) * (len(instrument.x_units) + len(instrument.y_units)), DATA_LINES), dtype=np.float32)
+        for i in xrange(len(instrument.output_channels)):
+            self.plots[instrument.output_channels[i]] = pg.PlotCurveItem(x=[0], y=[0],
+                pen = COLOR_MAP[i], name=instrument.output_channels[i])
+            #if instrument.enabled_channels[i] == True:
+            #    self.plot_widget.addItem(self.plots[instrument.output_channels[i]])
+
 
         #self.controller.data = array(zeros((len(data_units), MAX_PLOT_LENGTH), dtype=float32))
-        self.plot_increment = len(x_units) + len(y_units)
+        self.plot_increment = len(instrument.x_units) + len(instrument.y_units)
         #self.controller.number_of_x_units = len(x_units)
-        self.x_units = x_units
-        self.y_units = y_units
-        self.plot_widget.addLegend()
-        
+        self.x_units = instrument.x_units
+        self.y_units = instrument.y_units
+        self.update_visible_plots(instrument, False, False, False)
+
+
+
     def _selected_x_unit_changed(self, unit):
-        self.plot_widget.setLabel('bottom', self.x_units[unit], units = SI_ACR[self.x_units[unit]])
+        self.plot_widget.setLabel('bottom', self.x_units[unit], units = SI_ACR.get(self.x_units[unit], unit))
         self.selected_x_unit = unit
-    
+
     def _selected_y_unit_changed(self, unit):
-        self.plot_widget.setLabel('left', self.y_units[unit], units = SI_ACR[self.y_units[unit]])
+        self.plot_widget.setLabel('left', self.y_units[unit], units = SI_ACR.get(self.y_units[unit], unit))
         self.selected_y_unit = unit
 
     def _x_units_changed(self):
-        self._selected_x_unit_changed(0)            
-    
+        self._selected_x_unit_changed(0)
+
     def _y_units_changed(self):
-        self._selected_y_unit_changed(0)            
-                                    
+        self._selected_y_unit_changed(0)
+
     def start_stop(self, starting):
         logger.info('start_stop')
         if starting is True:
             self.index = 0
-    
+
     def add_data(self, data):
 #        logger.info('add_data %s', data)
-        if self.index >= DATA_LINES:
-            raise NotImplementedError
-            
+        if self.index >= self.plot_size:
+            lines = np.shape(self.data)[0]
+            self.data = np.concatenate((self.data, np.zeros(shape=(lines,
+                                            DATA_LINES), dtype=np.float32)), axis=1)
+            self.plot_size = self.plot_size + DATA_LINES
+
 #        self.controller.plotting_allowed = False
         rows_inc = 0
 #        self.plot_widget.enableAutoRange(False, False)
 #        logging.getLogger(__name__).info('plots.keys: %s', self.controller.time_plot.plots.keys())
-        
+
         for channel in self.plots.keys():
-            
+
             channel_data = data[channel]
             channel_data_x = channel_data[0]
             channel_data_y = channel_data[1]
@@ -144,14 +189,14 @@ class PlotPanel(HasTraits):
 #        self.updatePlot()
 #        self.controller.data_updated = True
 #        self.controller.plotting_allowed = True
-##        logging.getLogger(__name__).info('controller.data %s', self.controller.data)     
+##        logging.getLogger(__name__).info('controller.data %s', self.controller.data)
 #
 #    def updatePlot(self):
 #        for key, value in self.plots.items():
 #            if value.opts['name'] == key:
-#                value.setData(x= 
-#              
-                            
+#                value.setData(x=
+#
+
 if __name__ == '__main__':
     p = PlotPanel()
     p.configure_traits()

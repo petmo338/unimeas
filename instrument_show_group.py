@@ -40,7 +40,7 @@ class InstrumentShowAction(Action):
 
     def perform(self, event=None):
         if self.instrument:
-            self.task.active_instrument = self.instrument
+            self.task.set_active_instrument(self.instrument)
 #            self.dock_pane.visible = not self.dock_pane.visible
 
     ###########################################################################

@@ -19,6 +19,8 @@ class IInstrument(Interface):
     """ Must not have overlapping names \ 
         i.e. ai1, ai12, ai13 will generate error """
 
+    enabled_channels = List(Bool)
+    
     def start(self):
         """ Start the measurement """
         

@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 class EmptyCentralPane(TraitsTaskPane):
     id = 'sensorscience.unimeas.empty_central_pane'
     name = 'Empty central pane'
-    traits_view = View(resizable = False, width = 5)    
-    
+    traits_view = View(resizable = False, width = 5)
+
 class MeasureOverTimeTask(Task):
     """ A task for measure something over time.
     """
@@ -46,10 +46,10 @@ class MeasureOverTimeTask(Task):
     gpio_panel = Instance(GPIOPanel)
     pane = Instance(EmptyCentralPane)
 
-    instruments = List    
-    panels = List   
+    instruments = List
+    panels = List
     data_units = List
-    
+
     start_stop_subscribers = List
     data_subscribers = List
 
@@ -101,9 +101,13 @@ class MeasureOverTimeTask(Task):
 
     def activated(self):
         self._update_active_instrument()
-        
+
+    def set_active_instrument(self, instrument):
+        self.active_instrument = instrument
+#        self._update_active_instrument()
+
     #### Trait initializers ###################################################
-        
+
 
     def _default_layout_default(self):
         return TaskLayout(
@@ -116,14 +120,38 @@ class MeasureOverTimeTask(Task):
             )
 
     def _instruments_default(self):
-        from instruments.dummysourcemetertime import DummySourcemeterTime
-        from instruments.blank import Blank
-#        from instruments.ni6215 import NI6215
-#        from instruments.sourcemeter import SourceMeter
-        return [ DummySourcemeterTime(), \
-#                    NI6215(), \
-#                    SourceMeter(), \
-                    Blank() ]
+        instruments = []
+        try:
+            from instruments.dummysourcemetertime import DummySourcemeterTime
+        except ImportError:
+            pass
+        else:
+            instruments.append(DummySourcemeterTime())
+
+        try:
+            from instruments.blank import Blank
+        except ImportError:
+            pass
+        else:
+            instruments.append(Blank())
+
+        try:
+            from instruments.sourcemeter import SourceMeter
+        except ImportError:
+            pass
+        else:
+            instruments.append(SourceMeter())
+
+        try:
+            from instruments.ni6215 import NI6215
+        except ImportError:
+            pass
+        else:
+            instruments.append(NI6215())
+
+
+
+        return instruments
 
     def _panels_default(self):
         self.sql_panel = SQLPanel()
@@ -137,34 +165,32 @@ class MeasureOverTimeTask(Task):
         self.start_stop_subscribers.append(self.gasmixer_panel)
         self.start_stop_subscribers.append(self.gpio_panel)
         self.start_stop_subscribers.append(self.plot_panel)
-        return [self.sql_panel, 
-                self.gasmixer_panel, 
+        return [self.sql_panel,
+                self.gasmixer_panel,
                 self.gpio_panel,
                 self.plot_panel]
-        
+
     #### Trait change handlers ################################################
     @on_trait_change('active_instrument')
     def _update_active_instrument(self):
-        self.active_instrument = self.instruments[0]
+#        self.active_instrument = self.instruments[0]
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
-
+        self.on_trait_change(self.plot_panel.update_visible_plots, 'active_instrument.enabled_channels[]')
         self.configure_new_instrument()
         #self.plotter.configure_plots(self.active_instrument.output_channels, self.data_units,
         #                            self.active_instrument.x_units,
         #                            self.active_instrument.y_units)
-        self.plot_panel.configure_plots(self.active_instrument.output_channels, self.data_units,
-                                    self.active_instrument.x_units,
-                                    self.active_instrument.y_units)
+        self.plot_panel.configure_plots(self.active_instrument)
 #        self.plotter.set_y_unit(self.window.central_pane.selected_unit)
 #        self.plotter.set_x_unit(self.window.central_pane.timebase)
-        
+
         self.gpio_panel.active_instrument = self.active_instrument
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument
-      
-        
+
+
     def configure_new_instrument(self):
         self.data_units = []
         for i in xrange(len(self.active_instrument.output_channels)):
@@ -185,8 +211,8 @@ class MeasureOverTimeTask(Task):
 #            self.plotter.start_stop(self.active_instrument.running)
 #        self.sql_panel.start_stop(self.active_instrument.running)
 #        self.gasmixer_panel.start_stop(self.active_instrument.running)
-#        self.gpio_panel.start_stop(self.active_instrument.running) 
-         
+#        self.gpio_panel.start_stop(self.active_instrument.running)
+
     def _dispatch_data(self):
         while len(self.active_instrument.acquired_data) > 0:
             data = self.active_instrument.acquired_data.pop(0).copy()
@@ -194,6 +220,6 @@ class MeasureOverTimeTask(Task):
 #            logger(__name__).info('dispatch_data: %s', data)
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)
-#            self.plotter.add_data(data)            
+#            self.plotter.add_data(data)
 #            self.sql_panel.handle_new_data(data)
-#            self.gpio_panel.tick()             
+#            self.gpio_panel.tick()

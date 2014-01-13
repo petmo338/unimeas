@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from qtgraph_editor import QTGraphWidgetEditor
-from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, List, Array
-from traitsui.api import Item, View, Handler, ButtonEditor, EnumEditor, HGroup, spring, Label
+from traits.api import HasTraits, Int, Str, Instance, Dict, Array
+from traitsui.api import Item, View, EnumEditor, HGroup, Label
 from instruments.i_instrument import IInstrument
 import pyqtgraph as pg
 import numpy as np

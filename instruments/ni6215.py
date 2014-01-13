@@ -172,14 +172,9 @@ class NI6215(HasTraits):
             return
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):
-#            if enabled:
+
             d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
                             dict({self.y_units[0]:data[i + 2]}))
-#            else:
-#                d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-#                                dict({}))
-       # self.logger.info('d: %s', d)
-
         self.acquired_data.append(d)
 
     #### 'IInstrument' interface #############################################

@@ -1,15 +1,9 @@
-# Enthought library imports.
-from pyface.tasks.action.api import SGroup, SMenu, SMenuBar, \
-    TaskToggleGroup, DockPaneToggleGroup
-from pyface.action.api import Group
+from pyface.tasks.action.api import SMenu, SMenuBar, DockPaneToggleGroup, TaskToggleGroup
 from pyface.tasks.api import Task, TaskLayout, Tabbed, PaneItem, Splitter, TraitsTaskPane
-from traits.api import Any, List, Int, Event, Instance, on_trait_change, DelegatesTo, PrototypedFrom
+from traits.api import List, Instance, on_trait_change
 from traitsui.api import View
-# Local imports.
 from generic_pane import GenericPane
 from instrument_help_pane import InstrumentHelpPane
-
-#from measure_over_time_pane import MeasureOverTimePane
 from instruments.i_instrument import IInstrument
 from sql_panel import SQLPanel
 from gasmixer_panel import GasMixerPanel
@@ -17,8 +11,8 @@ from gpio_panel import GPIOPanel
 from plot_panel import PlotPanel
 from instrument_show_group import InstrumentShowGroup
 #import pdb
-from numpy import hstack
 import logging
+
 logger = logging.getLogger(__name__)
 
 class EmptyCentralPane(TraitsTaskPane):
@@ -37,6 +31,7 @@ class MeasureOverTimeTask(Task):
 
     menu_bar = SMenuBar(SMenu(id='File', name='&File'),
                         SMenu(id='Edit', name='&Edit'),
+                        SMenu(TaskToggleGroup(), id='Tasks', name='&Tasks'),
                         SMenu(DockPaneToggleGroup(),  id='Measurement', name='&Panels'),
                         SMenu(InstrumentShowGroup(), id='Instrument', name='&Instrument'))
 
@@ -44,6 +39,7 @@ class MeasureOverTimeTask(Task):
     sql_panel = Instance(SQLPanel)
     gasmixer_panel = Instance(GasMixerPanel)
     gpio_panel = Instance(GPIOPanel)
+    plot_panel = Instance(PlotPanel)
     pane = Instance(EmptyCentralPane)
 
     instruments = List
@@ -61,26 +57,10 @@ class MeasureOverTimeTask(Task):
         """ Create a plot pane with a list of instruments. Keep track of which
             instrument is active so that dock panes can introspect it.
         """
-
-        #pane = MeasureOverTimePane(instruments=self.instruments)
-        #pane.on_trait_change(self._update_active_instrument, 'active_instrument')
-        #pane.instruments=self.instruments
-        #self.active_instrument = pane.active_instrument
-        #self.plotter = pane.plotter
-        #self.data_subscribers.append(self.plotter)
-        #self.start_stop_subscribers.append(self.plotter)
-
-
         return EmptyCentralPane()
 
     def create_dock_panes(self):
-#        self.pane = MeasureOverTimePane(instruments=self.instruments)
-#        self.pane.on_trait_change(self._update_active_instrument, 'active_instrument')
- #       self.pane.instruments=self.instruments
         self.active_instrument = self.instruments[0]
-        #self.plotter = self.pane.plotter
-        #self.data_subscribers.append(self.plotter)
-        #self.start_stop_subscribers.append(self.plotter)
         return [ GenericPane(panel=self.active_instrument,
                                 id = 'sensorscience.unimeas.instrument_config_pane',
                                 name = 'Instrument configuration'),
@@ -104,10 +84,8 @@ class MeasureOverTimeTask(Task):
 
     def set_active_instrument(self, instrument):
         self.active_instrument = instrument
-#        self._update_active_instrument()
 
     #### Trait initializers ###################################################
-
 
     def _default_layout_default(self):
         return TaskLayout(
@@ -148,9 +126,6 @@ class MeasureOverTimeTask(Task):
             pass
         else:
             instruments.append(NI6215())
-
-
-
         return instruments
 
     def _panels_default(self):
@@ -171,25 +146,18 @@ class MeasureOverTimeTask(Task):
                 self.plot_panel]
 
     #### Trait change handlers ################################################
+
     @on_trait_change('active_instrument')
     def _update_active_instrument(self):
-#        self.active_instrument = self.instruments[0]
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.on_trait_change(self.plot_panel.update_visible_plots, 'active_instrument.enabled_channels[]')
         self.configure_new_instrument()
-        #self.plotter.configure_plots(self.active_instrument.output_channels, self.data_units,
-        #                            self.active_instrument.x_units,
-        #                            self.active_instrument.y_units)
         self.plot_panel.configure_plots(self.active_instrument)
-#        self.plotter.set_y_unit(self.window.central_pane.selected_unit)
-#        self.plotter.set_x_unit(self.window.central_pane.timebase)
-
         self.gpio_panel.active_instrument = self.active_instrument
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument
-
 
     def configure_new_instrument(self):
         self.data_units = []
@@ -207,19 +175,10 @@ class MeasureOverTimeTask(Task):
         logger.info('otc, active_instrument.start_stop')
         for subscriber in self.start_stop_subscribers:
             subscriber.start_stop(self.active_instrument.running)
-#        if hasattr(self, 'plotter'):
-#            self.plotter.start_stop(self.active_instrument.running)
-#        self.sql_panel.start_stop(self.active_instrument.running)
-#        self.gasmixer_panel.start_stop(self.active_instrument.running)
-#        self.gpio_panel.start_stop(self.active_instrument.running)
 
     def _dispatch_data(self):
         while len(self.active_instrument.acquired_data) > 0:
             data = self.active_instrument.acquired_data.pop(0).copy()
             data['gasmixer'] = self.gasmixer_panel.current_column
-#            logger(__name__).info('dispatch_data: %s', data)
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)
-#            self.plotter.add_data(data)
-#            self.sql_panel.handle_new_data(data)
-#            self.gpio_panel.tick()

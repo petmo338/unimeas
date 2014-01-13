@@ -110,7 +110,8 @@ class DummySourcemeterTime(HasTraits):
                                 editor = ButtonEditor(label_value='button_label')), \
                                 handler=DummySourcemeterTimeHandler)
 
-    def __init__(self):
+    def __init__(self, **traits):
+        super(DummySourcemeterTime, self).__init__(**traits)
         self.logger = logging.getLogger('dummysourcermeter')
         self.on_trait_change(self.add_data, 'acquisition_thread.sample_no')
         self.on_trait_change(self.update_config, 'sampling_interval, mean_+, stdev_+')

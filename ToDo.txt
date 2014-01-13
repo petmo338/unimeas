@@ -2,14 +2,18 @@ Todo!
 
 Workaround for slow plotting. Plot only a window, and also fix size of allData
 
-Sourcemeter plugin
+* Sourcemeter plugin
 Cap-meter plugin
 Temprature controller plugin
 
-Legend show all channels, not just the active ones
-Enable/disable channels in plot
+* Legend show all channels, not just the active ones
+* Enable/disable channels in plot
 
+Add python console pane
 
+Remove exception when NI-DAQ is not connected
+
+make a default max plot range
 
 Make measurement sweep task
 Instrument plugins for this task

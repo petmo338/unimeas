@@ -44,7 +44,10 @@ class MainWindowPlugin(Plugin):
 
     def _tasks_default(self):
         from measure_over_time_task import MeasureOverTimeTask
-
-        return [ TaskFactory(id = 'sensorscience.unimeas.measureovertime',
+        from measure_interval_task import MeasureIntervalTask
+        return [ TaskFactory(id = 'sensorscience.unimeas.measureinterval',
+                             name = 'Measure interval/ramp',
+                             factory = MeasureIntervalTask),
+                  TaskFactory(id = 'sensorscience.unimeas.measureovertime',
                              name = 'Measurement over time',
                              factory = MeasureOverTimeTask)]

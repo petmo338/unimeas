@@ -13,7 +13,7 @@ COLOR_MAP = ['FFA0FFFF', 'FF8080FF', 'FF40FFFF', 'FF0080FF',\
             'A0FFFFFF','80FFFFFF','40FFFFFF','00FFFFFF',\
             '0000FFFF','0000A0FF','800080FF','A00040FF',]
 
-SI_ACR = { 'Voltage':'V', 'Current':'A', 'Resistance':u"\u2126", 'Time':'s', 'SampleNumber':''}
+SI_ACR = { 'Frequency':'Hz', 'Capacitance':'F', 'Resistance':u"\u2126", 'Time':'s', 'SampleNumber':''}
 class IntervalPlotPanel(HasTraits):
     pane_name = Str('Plot')
     pane_id = Str('sensorscience.unimeas.plot_pane')
@@ -64,7 +64,7 @@ class IntervalPlotPanel(HasTraits):
 
         if self.plot_widget.sceneBoundingRect().contains(pos):
             mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(pos)
-            self.label.setText("x=%0.3f,  y=%0.3f" % (mousePoint.x(), mousePoint.y()))
+            self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()))
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
 
@@ -118,9 +118,8 @@ class IntervalPlotPanel(HasTraits):
             self.plot_index += 1
 
     def add_data(self, data):
-        channel_data = data[0]
-        channel_data_x = channel_data[self.channel_name][0]
-        channel_data_y = channel_data[self.channel_name][self.selected_y_unit + 1]
+        channel_data_x = data[self.channel_name][0]
+        channel_data_y = data[self.channel_name][self.selected_y_unit + 1]
         self.data[0][self.index] = channel_data_x.values()[0]
         self.data[1][self.index] = channel_data_y.values()[0]
         self.plots[self.plot_index].setData(x=self.data[0][:self.index],\

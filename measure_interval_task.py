@@ -53,6 +53,9 @@ class MeasureIntervalTask(Task):
     def initialized(self):
         self.update_active_instrument(self, 'from_init', None, self.active_instrument)
 
+    def set_active_instrument(self, instrument):
+        self.active_instrument = instrument
+
     def _default_layout_default(self):
         return TaskLayout(
             left=Splitter(Tabbed(PaneItem('sensorscience.unimeas.instrument_config_pane'),
@@ -72,6 +75,13 @@ class MeasureIntervalTask(Task):
             pass
         else:
             instruments.append(DummyIntervalInstrument())
+        try:
+            from instruments.agilent_4284 import Agilent4284
+        except ImportError as e:
+            logger.warning('Unable to import: %s', e)
+            pass
+        else:
+            instruments.append(Agilent4284())
         return instruments
 
     def _active_instrument_default(self):
@@ -93,10 +103,16 @@ class MeasureIntervalTask(Task):
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.plot_panel.configure_plots(self.active_instrument)
+        for dock_pane in self.window.dock_panes:
+            if dock_pane.id.find('instrument_config_pane') != -1:
+                dock_pane.panel = self.active_instrument
 
     def _dispatch_data(self, data):
-        for subscriber in self.data_subscribers:
-            subscriber.add_data(data)
+         while len(self.active_instrument.acquired_data) > 0:
+            data = self.active_instrument.acquired_data.pop(0).copy()
+            for subscriber in self.data_subscribers:
+                subscriber.add_data(data)
+
 
     def _start_stop(self):
         for subscriber in self.start_stop_subscribers:

@@ -114,7 +114,7 @@ class PlotPanel(HasTraits):
 
 
         self.plot_widget.enableAutoRange(True, True)
-        self.plot_widget.clear()
+
         self.plots = {}
         self.data = np.zeros(shape=(len(instrument.output_channels) * (len(instrument.x_units) + len(instrument.y_units)), DATA_LINES), dtype=np.float32)
         for i in xrange(len(instrument.output_channels)):

@@ -76,7 +76,7 @@ class GasMixerPanel(HasTraits):
                         self.state = State.CONNECTED
                 if msg.find('START') != -1:
                     if self.state != State.STARTING:
-                        self.state = State.STARTED
+                        self.state = State.RUNNING
 
 
         if self.state == State.CONNECTING:

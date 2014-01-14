@@ -150,7 +150,7 @@ class SourceMeter(HasTraits):
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model
                 
-        candidates = [n for n in instruments if n.startswith('SourceMeter')]
+        candidates = [n for n in instruments if n.lower().startswith('sourcemeter')]
         for instrument in candidates:
             temp_inst = visa.instrument(instrument, timeout = 1)
             temp_inst.term_chars = '\n'

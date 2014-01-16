@@ -82,6 +82,13 @@ class MeasureIntervalTask(Task):
             pass
         else:
             instruments.append(Agilent4284())
+        try:
+            from instruments.interval_sourcemeter import SourceMeter
+        except ImportError as e:
+            logger.warning('Unable to import: %s', e)
+            pass
+        else:
+            instruments.append(SourceMeter())
         return instruments
 
     def _active_instrument_default(self):

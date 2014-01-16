@@ -4,7 +4,7 @@ from enthought.traits.api import HasTraits, Instance, Float, Dict, \
    Event, Bool, Enum
 from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor
 from pyface.timer.api import Timer
-import visa
+from pyvisa import visa
 import numpy as np
 import logging
 

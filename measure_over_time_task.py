@@ -31,7 +31,7 @@ class MeasureOverTimeTask(Task):
 
     menu_bar = SMenuBar(SMenu(id='File', name='&File'),
                         SMenu(id='Edit', name='&Edit'),
-                        SMenu(TaskToggleGroup(), id='Tasks', name='&Tasks'),
+                        SMenu(TaskToggleGroup(), id='Tasks', name='&Measurement type'),
                         SMenu(DockPaneToggleGroup(),  id='Measurement', name='&Panels'),
                         SMenu(InstrumentShowGroup(), id='Instrument', name='&Instrument'))
 
@@ -116,6 +116,8 @@ class MeasureOverTimeTask(Task):
         try:
             from instruments.sourcemeter import SourceMeter
         except ImportError:
+            pass
+        except WindowsError:
             pass
         else:
             instruments.append(SourceMeter())

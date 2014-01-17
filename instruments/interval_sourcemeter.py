@@ -1,9 +1,10 @@
 from i_instrument import IInstrument
 from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int, Event, Bool, Enum
+    List, implements, Unicode, Str, Int, Event, Bool, Enum, Button
 from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
 from pyface.timer.api import Timer
 from pyvisa import visa
+from time import sleep
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,6 @@ DEFAULT_STEP_VOLTAGE = 0.01
 
 class ViewHandler(Handler):
     def closed(self, info, is_ok):
-#        logger.debug('Closing')
         if info.object.timer is not None:
             info.object.timer.Stop()
 
@@ -26,16 +26,11 @@ class SourceMeter(HasTraits):
 
     x_units = Dict({0: 'Voltage'})
     y_units = Dict({0: 'Current'})
-
     acquired_data = List(Dict)
-
     start_stop = Event
     running = Bool
-
     output_channels = Dict({0: 'smua'})
-
     enabled_channels = List(Bool)
-
     timer = Instance(Timer)
     timer_dormant = Bool(False)
     update_interval = Float(0.2)
@@ -57,11 +52,14 @@ class SourceMeter(HasTraits):
 
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
+    identify_button = Button('Identify')
     instrument = Instance(visa.Instrument)
 
-    traits_view = View(Item('selected_device', label = 'Device', \
+    traits_view = View(Group(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
                                 enabled_when='not running'),
+                            Item('identify_button', enabled_when = 'selected_device != \'\''),
+                            label = 'Instrument', show_border=True),
                         Group(Item('start_voltage', enabled_when='not running'),
                             Item('step_voltage', enabled_when='not running'),
                             Item('stop_voltage', enabled_when='not running'),
@@ -97,8 +95,6 @@ class SourceMeter(HasTraits):
             tmp_str = '%e' % self.start_voltage
             self.instrument.write('smua.source.levelv = ' + tmp_str)
             self.instrument.write('smua.source.output = smua.OUTPUT_ON')
-
-
 
     def instrument_stop(self):
         if self.instrument is not None:
@@ -143,9 +139,8 @@ class SourceMeter(HasTraits):
 
         d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_voltage}),
                                         dict({self.y_units[0] : self.current_current}))
-
-
         self.acquired_data.append(d)
+
         calc_curr_voltage = self.start_voltage + self.sample_nr * self.step_voltage
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
@@ -168,8 +163,19 @@ class SourceMeter(HasTraits):
             self.start()
 
     def _selected_device_changed(self, new):
-        self.instrument = visa.Instrument(new, timeout = 2)
-        self.instrument.write('*RST')
+        try:
+            self.instrument = visa.Instrument(new, timeout = 2)
+            self.instrument.write('*RST')
+        except visa.VisaIOError as e:
+            logger.error('Caught exception: %s', e)
+            self.instrument = None
+
+    def _identify_button_fired(self):
+        if self.instrument is not None:
+            self.instrument.write('beeper.enable = 1')
+            self.instrument.write('beeper.beep(0.2, 621)')
+            sleep(0.4)
+            self.instrument.write('beeper.beep(0.2, 453)')
 
     def _enabled_channels_default(self):
         return [True]

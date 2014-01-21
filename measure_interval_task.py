@@ -30,7 +30,7 @@ class MeasureIntervalTask(Task):
 
     menu_bar = SMenuBar(SMenu(id='File', name='&File'),
                         SMenu(id='Edit', name='&Edit'),
-                        SMenu(TaskToggleGroup(), id='Tasks', name='&Tasks'),
+                        SMenu(TaskToggleGroup(), id='Tasks', name='&Measurement type'),
                         SMenu(DockPaneToggleGroup(),  id='Measurement', name='&Panels'),
                         SMenu(InstrumentShowGroup(), id='Instrument', name='&Instrument'))
 
@@ -80,12 +80,16 @@ class MeasureIntervalTask(Task):
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
             pass
+        except WindowsError:
+            pass
         else:
             instruments.append(Agilent4284())
         try:
             from instruments.interval_sourcemeter import SourceMeter
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
+            pass
+        except WindowsError:
             pass
         else:
             instruments.append(SourceMeter())

@@ -52,6 +52,7 @@ class IntervalPlotPanel(HasTraits):
                 plot.getPlotItem().getViewBox().viewRect().top())
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         plot.sigRangeChanged.connect(self.rangeChanged)
+        plot.getViewBox().setAutoPan(x=False, y=False)
         return plot
 
     def rangeChanged(self, evt):

@@ -38,7 +38,7 @@ class SourceMeter(HasTraits):
     start_voltage = Float
     step_voltage = Float
     stop_voltage = Float
-    current_limit = Float
+    current_limit = Float(10.0)
 
     current_range = Enum('3A', '1A','100mA', '10mA', u'100\u00B5', u'10\u00B5A', u'1\u00B5A', '100nA')
     current_voltage= Float
@@ -145,7 +145,7 @@ class SourceMeter(HasTraits):
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
         if calc_curr_voltage <= self.stop_voltage:
-            tmp_str = '%e' % calc_curr_voltage + self.step_voltage
+            tmp_str = '%e' % (calc_curr_voltage + self.step_voltage)
             self.instrument.write('smua.source.levelv = ' + tmp_str)
             self.sample_nr += 1
         else:

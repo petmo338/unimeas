@@ -17,3 +17,7 @@ make a default max plot range
 
 Make measurement sweep task
 Instrument plugins for this task
+
+Make personal preset load possibility
+
+OK with Start freq higher than low

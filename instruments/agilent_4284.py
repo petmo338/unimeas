@@ -108,7 +108,7 @@ class Agilent4284(HasTraits):
                 self.instrument.write('BIAS:VOLT ' + str(self.start_bias))
                 self.instrument.write('BIAS:STAT 1')
                 self.instrument.write('FUNC:IMP ' + str(self.mode))
-                self.instrument.write('FREQ ' + str(self.sv_frequency))
+                self.instrument.write('FREQ ' + str(self.cv_frequency))
 
 
     def instrument_stop(self):
@@ -177,30 +177,29 @@ class Agilent4284(HasTraits):
         if self.measurement_mode is 0:
             freq = self.instrument.ask('FREQ?')
             self.current_capacitance =  values[0]
-            self.current_frequency = freq
-            d[self.output_channels[0]] = (dict({self.x_units[0] : freq}),
+            self.current_frequency = int(float(freq))
+            d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_frequency}),
                                             dict({self.y_units[0] : self.current_capacitance}))
         elif self.measurement_mode is 1:
             bias = self.instrument.ask('BIAS:VOLT?')
             self.current_capacitance =  values[0]
-            self.current_bias = bias
-            d[self.output_channels[1]] = (dict({self.x_units[1] : bias}),
+            self.current_bias = float(bias)
+            d[self.output_channels[1]] = (dict({self.x_units[1] : self.current_bias}),
                                             dict({self.y_units[0] : self.current_capacitance}))
 
         self.sample_nr += 1
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
         self.acquired_data.append(d)
-        if self.measurement_mode is 0:
-            try:
-                command = ''
-                if self.measurement_mode is 0:
-                    command = 'FREQ ' + str(self.output_list[self.sample_nr])
-                elif self.measurement_mode is 1:
-                    command = 'BIAS:VOLT ' + str(self.output_list[self.sample_nr])
-                self.instrument.write(command)
-            except IndexError:
-                self.start_stop = True
+        try:
+            command = ''
+            if self.measurement_mode is 0:
+                command = 'FREQ ' + str(self.output_list[self.sample_nr])
+            elif self.measurement_mode is 1:
+                command = 'BIAS:VOLT ' + str(self.output_list[self.sample_nr])
+            self.instrument.write(command)
+        except IndexError:
+            self.start_stop = True
 
     def _start_stop_fired(self):
         if self.instrument is None:

@@ -113,6 +113,7 @@ class MeasureIntervalTask(Task):
     def update_active_instrument(self, obj, name, old, new):
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
+        self.on_trait_change(self._configure_plots, 'active_instrument.enabled_channels[]')
         self.plot_panel.configure_plots(self.active_instrument)
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
@@ -124,6 +125,8 @@ class MeasureIntervalTask(Task):
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)
 
+    def _configure_plots(self):
+        self.plot_panel.configure_plots(self.active_instrument)
 
     def _start_stop(self):
         for subscriber in self.start_stop_subscribers:

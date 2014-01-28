@@ -160,7 +160,12 @@ class NI6215(HasTraits):
             self.selected_device = self._available_devices_map.items()[0][0]
 
     def _selected_device_default(self):
-        return self._available_devices_map.items()[0][0]
+        try:
+            device = self._available_devices_map.items()[0][0]
+        except IndexError:
+            return ''     
+        self._selected_device_changed(device)
+        return device
 
     def _refresh_list_fired(self):
         self._available_devices_map = self.__available_devices_map_default()

@@ -2,9 +2,14 @@
 import logging
 from enthought.traits.api import HasTraits, Range, implements, \
     Unicode, Int, Dict, Event, Bool, List
-from enthought.traits.ui.api import View, Item, Group
+from enthought.traits.ui.api import View, Item, Group, Label
 
 from i_instrument import IInstrument
+
+INFO_STRING = """
+    First, select type of measurement (something over time or sweep type).
+    Then, select the instrument you intend to use.
+    """
 
 class Blank(HasTraits):
     """Empty instrument"""
@@ -18,25 +23,22 @@ class Blank(HasTraits):
         Item('start_stop', label = 'Start/Stop Acqusistion'),
         show_border = True)
 
-    traits_view = View(parameter_group)
+    traits_view = View(Label(INFO_STRING))
 
     def __init__(self):
         self.logger = logging.getLogger('Blank')
-
-    def _enabled_channels_default(self):
-        return [True] * 1
 
     #### 'IInstrument' interface #############################################
     name = Unicode('Blank instrument')
 
     acquired_data = List(Dict)
 
-    y_units = Dict({0: 'Apor', 1: 'Rumpor', 2: 'loppor'})
-    x_units = Dict({0:'SampleNumber', 1:'Time'})
+    y_units = Dict({0: 'None'})
+    x_units = Dict({0:'None'})
 
     start_stop = Event
     running = Bool
-    output_channels = Dict({0: 'ch0'})
+    output_channels = Dict({0: 'none'})
     enabled_channels = List(Bool)
 
     def start(self):
@@ -46,4 +48,8 @@ class Blank(HasTraits):
         self.logger.info('Blank stop()')
 
     def _enabled_channels_default(self):
-        return [True]
+        return [False]
+        
+if __name__ is '__main__':
+    
+    b = Blank().configure_traits()

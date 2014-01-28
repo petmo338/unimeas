@@ -69,6 +69,13 @@ class MeasureIntervalTask(Task):
     def _instruments_default(self):
         instruments = []
         try:
+            from instruments.blank import Blank
+        except ImportError:
+            pass
+        else:
+            instruments.append(Blank())
+        
+        try:
             from instruments.dummy_interval_instrument import DummyIntervalInstrument
         except ImportError as e:
             logger.warning('Unable to import DummyIntervalInstrument: %s', e)
@@ -119,7 +126,7 @@ class MeasureIntervalTask(Task):
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument
 
-    def _dispatch_data(self, data):
+    def _dispatch_data(self):
          while len(self.active_instrument.acquired_data) > 0:
             data = self.active_instrument.acquired_data.pop(0).copy()
             for subscriber in self.data_subscribers:
@@ -129,5 +136,7 @@ class MeasureIntervalTask(Task):
         self.plot_panel.configure_plots(self.active_instrument)
 
     def _start_stop(self):
+        if not self.active_instrument.running:
+            self._dispatch_data()
         for subscriber in self.start_stop_subscribers:
             subscriber.start_stop(self.active_instrument.running)

@@ -100,18 +100,18 @@ class MeasureOverTimeTask(Task):
     def _instruments_default(self):
         instruments = []
         try:
-            from instruments.dummysourcemetertime import DummySourcemeterTime
-        except ImportError:
-            pass
-        else:
-            instruments.append(DummySourcemeterTime())
-
-        try:
             from instruments.blank import Blank
         except ImportError:
             pass
         else:
             instruments.append(Blank())
+        
+        try:
+            from instruments.dummysourcemetertime import DummySourcemeterTime
+        except ImportError:
+            pass
+        else:
+            instruments.append(DummySourcemeterTime())
 
         try:
             from instruments.sourcemeter import SourceMeter

@@ -1,9 +1,9 @@
 Todo!
 
-Workaround for slow plotting. Plot only a window, and also fix size of allData
+* [Done] Workaround for slow plotting. Plot only a window, and also fix size of allData
 
-* Sourcemeter plugin
-Cap-meter plugin
+* [Done] Sourcemeter plugin
+* [Done] Cap-meter plugin
 Temprature controller plugin
 
 * Legend show all channels, not just the active ones
@@ -13,11 +13,13 @@ Add python console pane
 
 Remove exception when NI-DAQ is not connected
 
-make a default max plot range
+* [Done] make a default max plot range
 
-Make measurement sweep task
-Instrument plugins for this task
+* [Done] Make measurement sweep task
+* [Mostly done] Instrument plugins for this task
 
 Make personal preset load possibility
 
-OK with Start freq higher than low
+* [Done] OK with Start freq higher than low
+
+*[Skipped, added default path instead] save file - folder icon missing

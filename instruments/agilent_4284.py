@@ -2,10 +2,10 @@ from i_instrument import IInstrument
 from enthought.traits.api import HasTraits, Instance, Float, Dict, \
     List, implements, Unicode, Str, Int, on_trait_change, Array,\
    Event, Bool, Enum
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor
+from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, HGroup, spring
 from pyface.timer.api import Timer
 from pyvisa import visa
-import numpy as np
+#import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ class Agilent4284(HasTraits):
     start_bias = Float(-5.0)
     stop_bias = Float(5.0)
     step_bias = Float(0.05)
+    keep_bias_on = Bool(False)
     cv_frequency = Int(DEFAULT_STOP_FREQUENCY)
 
     bias = Float(1.0)
@@ -75,10 +76,11 @@ class Agilent4284(HasTraits):
     traits_view = View(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
                                 enabled_when='not running'),
-                        Item('measurement_mode', editor=EnumEditor(name='output_channels'), enabled_when = 'not_running'),
+                        Item('measurement_mode', editor=EnumEditor(name='output_channels'), enabled_when = 'not running'),
                         Group(Item('start_frequency', enabled_when='not running'),
                             Item('stop_frequency', enabled_when='not running'),
-                            Item('bias'), Item('mode', enabled_when='not running'),
+                            Item('bias'), Item('keep_bias_on'),
+                            Item('mode', enabled_when='not running'),
                             Item('current_frequency', enabled_when='False'),
                             Item('current_capacitance', enabled_when='False'),
                             label='C/F', show_border = True, enabled_when = 'measurement_mode == 0'),
@@ -113,7 +115,8 @@ class Agilent4284(HasTraits):
 
     def instrument_stop(self):
         if self.instrument is not None:
-            self.instrument.write('BIAS:STAT 0')
+            if not self.keep_bias_on:
+                self.instrument.write('BIAS:STAT 0')
             self.instrument.write('VOLT 0.5')
 
 
@@ -167,7 +170,7 @@ class Agilent4284(HasTraits):
                     self.output_list.append(self.start_bias - abs(self.step_bias) * i)
             else:
                 self.output_list.append(self.start_bias)
-        logger.info('output_list %s', self.output_list)
+#        logger.info('output_list %s', self.output_list)
 
     def _onTimer(self):
         self.timer.Stop()
@@ -214,7 +217,6 @@ class Agilent4284(HasTraits):
 
     @on_trait_change('stop_frequency, start_frequency')
     def _frequency_checker(self, obj, name, old, new):
-        logger.info('otc_freq_check')
         try:
             index = self.available_frequencies.index(new)
         except ValueError:
@@ -279,8 +281,13 @@ class Agilent4284(HasTraits):
     def _stop_frequency_default(self):
         return DEFAULT_STOP_FREQUENCY
 
-    #def _measurement_mode_default(self):
-    #    return self.output_channels.values()
+    def _selected_device_default(self):
+        try:
+            device = self._available_devices_map.items()[0][0]
+        except IndexError:
+            return ''     
+        self._selected_device_changed(device)
+        return device
 
     def _available_frequencies_default(self):
         l = []

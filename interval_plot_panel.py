@@ -88,10 +88,13 @@ class IntervalPlotPanel(HasTraits):
 
         self.plot_widget.enableAutoRange(True, True)
         self.plot_widget.clearPlots()
-        self.plots = {}
-        channel_index = instrument.enabled_channels.index(True)
+        self._clear_plots_fired()
         self.x_units = instrument.x_units
         self.y_units = instrument.y_units
+        try:
+            channel_index = instrument.enabled_channels.index(True)
+        except ValueError:
+            return
         self.plot_widget.setLabel('bottom', self.x_units[channel_index], units = SI_ACR.get(self.x_units[channel_index], 0))
         self.channel_name = instrument.output_channels[channel_index]
 

@@ -9,7 +9,7 @@ from pyvisa import visa
 from time import sleep, time
 from threading import Thread
 import Queue
-
+ID_STRING_LENGTH = 30
 class AcquisitionThread(Thread, HasTraits):
     wants_abort = Bool(False)
     sample_number = Int(0)
@@ -71,9 +71,9 @@ class SourceMeter(HasTraits):
     current_limit = Float(100.0)
     voltage_limit = Float(5.0)
 
-    _current_range_map = Dict({'Auto':'Auto', '3':'3 A', '1':'1 A', '0.1':'100 mA', \
-        '0.01':'10 mA', '1e-3':'1 mA', '1e-4':'100 \u00B5A', '1e-5':'10 \u00B5A', \
-        '1e-6':'1 \u00B5A', '1e-7':'100 nA'})
+    _current_range_map = Dict({'Auto':'Auto', '3':'3A', '1':'1A', '0.1':'100mA', \
+        '0.01':'10mA', '1e-3':'1mA', '1e-4':u'100\u00B5A', '1e-5':u'10\u00B5A', \
+        '1e-6':u'1\u00B5A', '1e-7':'100nA'})
     _voltage_range_map = Dict({'Auto':'Auto', '40':'40 V', '6':'6 V', '1':'1 V', '0.1':'0.1 V'})
     current_range = Str('Auto')
     voltage_range = Str('Auto')
@@ -124,14 +124,14 @@ class SourceMeter(HasTraits):
             temp_inst = visa.instrument(instrument)
             model = temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+                d[instrument] = model[:ID_STRING_LENGTH]
 
         candidates = [n for n in instruments if n.startswith('USB') and n.find('0x26') > 0]
         for instrument in candidates:
             temp_inst = visa.instrument(instrument)
             model = temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+                d[instrument] = model[:ID_STRING_LENGTH]
 
         candidates = [n for n in instruments if n.startswith('k-26')]
         for instrument in candidates:
@@ -141,7 +141,7 @@ class SourceMeter(HasTraits):
                 pass
             temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+                d[instrument] = model[:ID_STRING_LENGTH]
 
         candidates = [n for n in instruments if n.lower().startswith('sourcemeter')]
         for instrument in candidates:
@@ -149,12 +149,20 @@ class SourceMeter(HasTraits):
             temp_inst.term_chars = '\n'
             model = temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+                d[instrument] = model[:ID_STRING_LENGTH]
         return d
 
     def _selected_device_changed(self, new):
         self.instrument = visa.Instrument(new, timeout = 2)
         self.instrument.write('reset()')
+
+    def _selected_device_default(self):
+        try:
+            device = self._available_devices_map.items()[0][0]
+        except IndexError:
+            return ''
+        self._selected_device_changed(device)
+        return device
 
     def _identify_button_fired(self):
         if self.selected_device != '':

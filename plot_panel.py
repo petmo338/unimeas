@@ -69,7 +69,7 @@ class PlotPanel(HasTraits):
         if self.plot_widget.sceneBoundingRect().contains(pos):
             mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(pos)
 #            logger.info(mousePoint)
-            self.label.setText("x=%0.3f,  y=%0.3f" % (mousePoint.x(), mousePoint.y()))
+            self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()))
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
 

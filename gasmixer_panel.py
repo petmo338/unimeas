@@ -2,7 +2,7 @@ import zmq
 import logging
 logger = logging.getLogger(__name__)
 from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, Tuple
-from traitsui.api import Item, View, Handler, ButtonEditor,  HGroup, spring
+from traitsui.api import Item, View, Handler, ButtonEditor,  HGroup, spring, Label
 from pyface.timer.api import Timer
 
 UPDATE_INTERVAL = 500
@@ -54,10 +54,11 @@ class GasMixerPanel(HasTraits):
     state = Int(State.DISCONNECTED)
     connect_timeout = Int(0)
 
-    traits_view = View(HGroup(Item('control_gasmixer', label = 'Control GasMixer'), spring,
+    traits_view = View(HGroup(Item('control_gasmixer', label = 'Control GasMixer', enabled_when = 'state == 3'),
+                        Label('<- Control GasMixer start/stop.'),
                         Item('running_label', show_label = False, style='readonly')),
                         Item('current_column_int', label = 'Curr. column'),
-                        Item('button', label = 'Control GasMixer',
+                        Item('button', label = 'Connection',
                             editor = ButtonEditor(label_value = 'button_label')),
                             handler = GasMixerPanelHandler)
 
@@ -86,7 +87,7 @@ class GasMixerPanel(HasTraits):
                 if response == 'CONNECT OK':
                     self.state = State.CONNECTED
                     self.button_label = 'Connected'
-                    self.control_gasmixer = True
+                    #self.control_gasmixer = True
                     self.connect_timeout = 0
             else:
                 if self.connect_timeout > CONNECT_TIMEOUT:

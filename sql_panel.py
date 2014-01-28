@@ -103,7 +103,7 @@ class SQLPanel(HasTraits):
 
     ############ Panel Interface ###########################3
     
-    pane_name = Str('SQL Configuration')
+    pane_name = Str('Save Configuration')
     pane_id = Str('sensorscience.unimeas.sql_pane')
 
     database_wrapper = Instance(SQLWrapper)
@@ -114,7 +114,7 @@ class SQLPanel(HasTraits):
     save_in_database = Bool(False)
     prepend_timestamp = Bool(True)
     save_to_file = Bool
-    filename = Str
+    filename = Str('Z:\\Lab Users\\MY_NAME')
     available_users = List(Unicode)
 
     

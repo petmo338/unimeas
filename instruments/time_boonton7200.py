@@ -132,6 +132,13 @@ class Boonton7200(HasTraits):
     def _selected_device_changed(self, new):
         self.instrument = visa.Instrument(new, timeout = 2)
 
+    def _selected_device_default(self):
+        try:
+            device = self._available_devices_map.items()[0][0]
+        except KeyError:
+            return ''     
+        self._selected_device_changed(device)
+        return device
 
     def _enabled_channels_default(self):
         return [True, False]

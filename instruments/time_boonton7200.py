@@ -23,7 +23,7 @@ class ViewHandler(Handler):
 class TableEntry(HasTraits):
 
     time = Int
-    BIAS = Float
+    bias = Float(0.0)
     remaining = Int
 
 table_editor = TableEditor(
@@ -35,7 +35,7 @@ table_editor = TableEditor(
     auto_size   = True,
     orientation = 'vertical',
     edit_view   = None,
-    auto_add = True,
+    auto_add = False,
     show_toolbar = True,
     sortable = False,
     row_factory = TableEntry )
@@ -120,6 +120,8 @@ class Boonton7200(HasTraits):
         self.running = True
         self.instrument_init()
         self.start_time = time()
+        self.bias_table_current_row = 0
+        self._row_changed(0)
         if self.timer is None:
             self.timer = Timer(self.update_interval * 1000, self._onTimer)
         else:
@@ -155,9 +157,9 @@ class Boonton7200(HasTraits):
             if self.bias_table_current_row < len(self.bias_table):
                 row_time = time() - self.row_start_time
                 self.bias_table[self.bias_table_current_row].remaining = int(self.bias_table[self.bias_table_current_row].time - row_time)
-            if self.bias_table[self.bias_table_current_row].remaining < 1:
-                self.bias_table_current_row += 1
-                self._row_changed(self.bias_table[self.bias_table_current_row - 1].time - row_time)
+                if self.bias_table[self.bias_table_current_row].remaining < 1:
+                    self.bias_table_current_row += 1
+                    self._row_changed(self.bias_table[self.bias_table_current_row - 1].time - row_time)
 
 
     def _row_changed(self, remainder):
@@ -193,6 +195,10 @@ class Boonton7200(HasTraits):
 
     def _enabled_channels_default(self):
         return [True, False]
+        
+    def _bias_table_default(self):
+        return [TableEntry(time = 10, bias = 0.0, remaining = 0),
+                TableEntry(time = 10, bias = 0.5, remaining = 0)]
 
     def __available_devices_map_default(self):
         try:
@@ -204,9 +210,14 @@ class Boonton7200(HasTraits):
         candidates = [n for n in instruments if n.startswith('GPIB')]
         for instrument in candidates:
             temp_inst = visa.instrument(instrument)
-            model = temp_inst.ask('ID')
-            if model.find('Model') == 0 and model.find('7200') > 0:
-                d[instrument] = model
+            temp_inst.timeout = 1
+            try:
+                model = temp_inst.ask('ID')
+            except visa.VisaIOError:
+                pass
+            else:
+                if model.find('Model') == 0 and model.find('7200') > 0:
+                    d[instrument] = model
 
         return d
 

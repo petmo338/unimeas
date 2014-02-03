@@ -1,7 +1,8 @@
 from i_instrument import IInstrument
 from enthought.traits.api import HasTraits, Instance, Float, Dict, \
     List, implements, Unicode, Str, Int,Event, Bool
-from enthought.traits.ui.api import View, Item, ButtonEditor, Handler, EnumEditor, RangeEditor, Group
+from enthought.traits.ui.api import View, Item, ButtonEditor, Handler, EnumEditor, RangeEditor, Group, TableEditor
+from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
 from pyvisa import visa
 from time import time
@@ -17,6 +18,27 @@ class ViewHandler(Handler):
 #        logger.debug('Closing')
         if info.object.timer is not None:
             info.object.timer.Stop()
+
+
+class TableEntry(HasTraits):
+
+    time = Int
+    BIAS = Float
+    remaining = Int
+
+table_editor = TableEditor(
+    columns = [ NumericColumn( name = 'time'),
+                NumericColumn( name = 'bias'),
+                NumericColumn( name = 'remaining')],
+    deletable   = True,
+    sort_model  = False,
+    auto_size   = True,
+    orientation = 'vertical',
+    edit_view   = None,
+    auto_add = True,
+    show_toolbar = True,
+    sortable = False,
+    row_factory = TableEntry )
 
 class Boonton7200(HasTraits):
 
@@ -54,7 +76,10 @@ class Boonton7200(HasTraits):
     bias_low_limit = Float(-10.0)    # Instrument supports -100V to +100V
     bias_high_limit = Float(10.0)
 
-
+    bias_table = List(TableEntry)
+    bias_table_current_row = Int(0)
+    bias_table_enable = Bool(False)
+    stop_meas_after_last_row = Bool(False)
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
     instrument = Instance(visa.Instrument)
@@ -69,6 +94,14 @@ class Boonton7200(HasTraits):
                                 Item('sample_nr', enabled_when = 'False'),
                                 label = 'Measurement', show_border = True),
 
+                        Group(Item('bias_table_enable'),
+                                Item('stop_meas_after_last_row'),
+                            Item( 'bias_table',
+                                show_label  = False,
+#                               label       = 'right-click to edit',
+                                editor      = table_editor,
+                                enabled_when = 'not running and bias_table_enable'),
+                            show_border = True),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
                         handler = ViewHandler)
@@ -118,6 +151,24 @@ class Boonton7200(HasTraits):
         self.timer_dormant = False
         self.acquired_data.append(d)
 
+        if self.bias_table_enable:
+            if self.bias_table_current_row < len(self.bias_table):
+                row_time = time() - self.row_start_time
+                self.bias_table[self.bias_table_current_row].remaining = int(self.bias_table[self.bias_table_current_row].time - row_time)
+            if self.bias_table[self.bias_table_current_row].remaining < 1:
+                self.bias_table_current_row += 1
+                self._row_changed(self.bias_table[self.bias_table_current_row - 1].time - row_time)
+
+
+    def _row_changed(self, remainder):
+        self.row_start_time = time() + remainder
+#        logging.getLogger(__name__).info('self.row_start_time: %f', self.row_start_time)
+        if self.bias_table_current_row >= len(self.bias_table):
+            if self.stop_meas_after_last_row:
+                self.start_stop = True
+            return
+        self.bias = self.bias_table[self.bias_table_current_row].bias
+
     def _start_stop_fired(self):
         if self.instrument is None:
             return
@@ -135,8 +186,8 @@ class Boonton7200(HasTraits):
     def _selected_device_default(self):
         try:
             device = self._available_devices_map.items()[0][0]
-        except KeyError:
-            return ''     
+        except IndexError:
+            return ''
         self._selected_device_changed(device)
         return device
 

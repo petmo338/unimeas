@@ -15,7 +15,7 @@ COLOR_MAP = ['FFA0FFFF', 'FF8080FF', 'FF40FFFF', 'FF0080FF',\
             '0000FFFF','0000A0FF','800080FF','A00040FF',]
 
 SI_ACR = { 'Voltage':'V', 'Current':'A', 'Resistance':u"\u2126", 'Time':'s',
-            'SampleNumber':'', 'Capacitance': 'F'}
+            'SampleNumber':'', 'Capacitance': 'F', 'Frequency': 'Hz', 'BIAS': 'V'}
 class PlotPanel(HasTraits):
     pane_name = Str('Plot')
     pane_id = Str('sensorscience.unimeas.plot_pane')

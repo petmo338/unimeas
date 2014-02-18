@@ -1,6 +1,6 @@
 from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
     Unicode, Str
-from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring
+from traitsui.api import EnumEditor, TextEditor, Item, View, HGroup, VGroup, spring
 import csv
 import time
 import logging
@@ -30,7 +30,7 @@ class SQLWrapper():
         for user in result:
             retval.append(user[0])
         return retval
-        
+
     def change_database(self, db):
         self.cursor.close()
         self.conn.close()
@@ -42,8 +42,8 @@ class SQLWrapper():
 
         self.cursor = self.conn.cursor()
         return True
-        
-    def set_table(self, column_names, name):
+
+    def set_table(self, column_names, name, comment = ''):
         name = self.TABLE_NAME_PREPEND + name
         self.column_names = column_names
         self.DBAPI.paramstyle = "numeric"
@@ -55,10 +55,12 @@ class SQLWrapper():
                 logging.getLogger('sql_wrapper').warning('Unable to create table. \
                                                         Saving data disabled')
                 self.table_name = ''
-                return False                
+                return False
         else:
             logging.getLogger('sql_wrapper').warning('Table: %s exists, appending', name)
         self.table_name = name
+        query   = 'COMMENT on table ' + name + ' is \'' + comment + '\';'
+        self.cursor.execute(query)
         return True
 
     def _create_table(self, column_names, name):
@@ -71,7 +73,7 @@ class SQLWrapper():
         self.conn.commit()
         return True
 
-        
+
     def insert_data(self, data):
         if self.table_name == '':
             logging.getLogger('sql_wrapper').info('No table_name set. Buffering...')
@@ -90,19 +92,19 @@ class SQLWrapper():
                         if data[channel][1] == dict():
                             break
                         string_data[column_index] = str(data[channel][1][column[len(channel):]])
-                                                        
-            for value in string_data:    
+
+            for value in string_data:
                 query = query + ' ,' + value
-            query = query + ')'      
+            query = query + ')'
             self.cursor.execute(query)
-            self.conn.commit()    
+            self.conn.commit()
 #            logging.getLogger('sql_wrapper').info('query: %s', query)
-                  
+
 
 class SQLPanel(HasTraits):
 
     ############ Panel Interface ###########################3
-    
+
     pane_name = Str('Save Configuration')
     pane_id = Str('sensorscience.unimeas.sql_pane')
 
@@ -111,35 +113,40 @@ class SQLPanel(HasTraits):
     selected_user = Str
     refresh = Button
     measurement_name = Str
+    measurement_description = Str
     save_in_database = Bool(False)
     prepend_timestamp = Bool(True)
     save_to_file = Bool
-    filename = Str('Z:\\Lab Users\\MY_NAME')
+    running = Bool
+    filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
     available_users = List(Unicode)
 
-    
-    traits_view = View(VGroup(HGroup(Item('selected_user',
-                            editor=EnumEditor(name='available_users')), spring,
-                        Item('refresh', show_label=False)),
-                        HGroup(
-                        Item('save_in_database'), Item('prepend_timestamp')),
-                        Item('measurement_name'),
-                        
-                        Item('save_to_file', label = 'Save to file (.csv)'), Item('filename')))
+
+    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when = 'not running'),
+                            Item('selected_user',
+                            editor=EnumEditor(name='available_users'),
+                            enabled_when = 'not running and save_in_database'), spring,
+                        Item('refresh', show_label=False,  enabled_when = 'not running and save_in_database')),
+
+                        Item('prepend_timestamp', enabled_when = 'not running and save_in_database'),
+                        Item('measurement_name', enabled_when = 'not running and save_in_database'),
+                        Item('measurement_description', enabled_when = 'not running and save_in_database', style = 'custom'),
+                        Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
+                        Item('filename', enabled_when = 'not running and save_to_file')))
 
     def _available_users_default(self):
         return []
-                                                      
+
     def _measurement_name_default(self):
         localtime   = time.localtime()
         return time.strftime("%Y%m%d_%H%M%S_", localtime)
-        
+
     def _prepend_timestamp_changed(self, old, new):
         if new == True:
             self.measurement_name = self._measurement_name_default() + self.measurement_name
         else:
             self.measurement_name = ''
-     
+
     def _selected_user_changed(self, old, new):
         if new == '':
             self.save_in_database = False
@@ -173,7 +180,7 @@ class SQLPanel(HasTraits):
 
         self.csv_writer.writerow(string_data)
 
-                              
+
 #    @on_trait_change('instrument.sample_number')
     def add_data(self, data):
         if self.save_in_database:
@@ -182,8 +189,10 @@ class SQLPanel(HasTraits):
             self.write_to_file(data)
 
     def start_stop(self, running):
+        self.running = running
         if running and self.save_in_database:
-            self.database_wrapper.set_table(self.column_names, self.measurement_name)         
+            self.database_wrapper.set_table(self.column_names, self.measurement_name,
+                self.measurement_description)
 
         if running and self.save_to_file:
             try:
@@ -194,8 +203,9 @@ class SQLPanel(HasTraits):
             self.csv_writer.writerow(self.column_names)
             self.column_names = self.column_names
         if not running and self.save_to_file:
-            del self.csv_writer                        
- 
-        
+            del self.csv_writer
+
+
 if __name__ == '__main__':
-    SQLPanel().configure_traits()
+    s = SQLPanel()
+    s.configure_traits()

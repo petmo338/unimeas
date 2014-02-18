@@ -105,11 +105,13 @@ class Agilent4284(HasTraits):
                 self.instrument.write('BIAS:VOLT ' + str(self.bias))
                 self.instrument.write('BIAS:STAT 1')
                 self.instrument.write('FUNC:IMP ' + str(self.mode))
+                self.instrument.write('FUNC:IMP:RANG:AUTO ON')
                 self.instrument.write('FREQ ' + str(self.start_frequency))
             elif self.measurement_mode is 1:
                 self.instrument.write('BIAS:VOLT ' + str(self.start_bias))
                 self.instrument.write('BIAS:STAT 1')
                 self.instrument.write('FUNC:IMP ' + str(self.mode))
+                self.instrument.write('FUNC:IMP:RANG:AUTO ON')
                 self.instrument.write('FREQ ' + str(self.cv_frequency))
 
 
@@ -285,7 +287,7 @@ class Agilent4284(HasTraits):
         try:
             device = self._available_devices_map.items()[0][0]
         except IndexError:
-            return ''     
+            return ''
         self._selected_device_changed(device)
         return device
 

@@ -64,9 +64,9 @@ class SourceMeter(HasTraits):
                             Item('step_voltage', enabled_when='not running'),
                             Item('stop_voltage', enabled_when='not running'),
                             Item('current_limit', enabled_when='not running', label = 'Current limit [mA]'),
-                            Item('current_range', enabled_when='not running'),
+#                            Item('current_range', enabled_when='not running'),
                             Item('current_voltage', enabled_when='False', label = 'U [V]'),
-                            Item('current_current', enabled_when='False', label = 'I [mA]'),
+                            Item('current_current', enabled_when='False', label = 'I [A]'),
                             Item('reading_overflow', style = 'readonly', editor=BooleanEditor(mapping={'READING OVERFLOW':True, '':False})), # Does not work
                             Item('current_limit_exceeded', style = 'readonly', editor=BooleanEditor(mapping={'CURRENT TOO HIGH':True, '':False})),
                             label='I/V', show_border = True),
@@ -86,20 +86,26 @@ class SourceMeter(HasTraits):
                 status.measurement.reading_overflow.SMUA')
             self.instrument.write('status.measurement.voltage_limit.enable =\
                 status.measurement.voltage_limit.SMUA')
-            self.instrument.write('smua.source.autorangei = smua.AUTORANGE_ON')
-            self.instrument.write('smua.source.autorangev = smua.AUTORANGE_ON')
+            self.instrument.write('smua.source.autorangei = smua.AUTORANGE_OFF')
+            self.instrument.write('smua.source.autorangev = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.autorangei = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_OFF')
+            self.instrument.write('smua.measure.rangei = %e'  % ((self.current_limit * 1.1)/1000))
+            self.instrument.write('smua.measure.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
+            
             self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
-            self.instrument.write('smua.source.limiti = ' + str(self.current_limit/1000))
-            tmp_str = '%e' % self.start_voltage
-            self.instrument.write('smua.source.levelv = ' + tmp_str)
+            self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
+            self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
+            self.instrument.write('smua.source.levelv = %e' % self.start_voltage)
             self.instrument.write('smua.source.output = smua.OUTPUT_ON')
 
     def instrument_stop(self):
         if self.instrument is not None:
             self.instrument.write('smua.source.levelv = 0')
             self.instrument.write('smua.source.output = smua.OUTPUT_OFF')
+            self.instrument.write('smua.measure.autorangei = smua.AUTORANGE_ON')
+            self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_ON')
+
 
     def start(self):
         self.button_label = 'Stop'
@@ -118,6 +124,15 @@ class SourceMeter(HasTraits):
         self.running = False
         self.timer_dormant = False
         self.instrument_stop()
+        count = 0
+        while len(self.acquired_data) > 0:
+            sleep(500)
+            count += 1
+            logger.info('Waiting for aqc_data to be empty: %s', self.acquired_data)
+            if count > 5:
+                self.acquired_data = dict()
+                return
+        
 
     def _onTimer(self):
         self.timer.Stop()
@@ -145,8 +160,7 @@ class SourceMeter(HasTraits):
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
         if calc_curr_voltage <= self.stop_voltage:
-            tmp_str = '%e' % (calc_curr_voltage + self.step_voltage)
-            self.instrument.write('smua.source.levelv = ' + tmp_str)
+            self.instrument.write('smua.source.levelv = %e'  % (calc_curr_voltage + self.step_voltage))
             self.sample_nr += 1
         else:
             self.start_stop = True

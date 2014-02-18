@@ -109,13 +109,14 @@ class IntervalPlotPanel(HasTraits):
     def _y_units_changed(self):
         self._selected_y_unit_changed(0)
 
-    def start_stop(self, starting):
-        if starting is True:
+    def start_stop(self, instrument):
+        if instrument.running is True:
             if not self.keep_plots:
                 self._clear_plots_fired()
                 self.plot_index = 0
             self.plots[self.plot_index] = pg.PlotCurveItem(x=[], y=[],
-                pen = COLOR_MAP[self.plot_index % len(COLOR_MAP)], name=str(self.plot_index))
+                pen = COLOR_MAP[self.plot_index % len(COLOR_MAP)],
+                name=instrument.measurement_info.get('name', str(self.plot_index)))
             self.plot_widget.addItem(self.plots[self.plot_index])
             self.index = 0
         else:

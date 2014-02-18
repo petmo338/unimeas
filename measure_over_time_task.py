@@ -133,6 +133,8 @@ class MeasureOverTimeTask(Task):
             from instruments.time_boonton7200 import Boonton7200
         except ImportError:
             pass
+        except WindowsError:
+            pass
         else:
             instruments.append(Boonton7200())
 

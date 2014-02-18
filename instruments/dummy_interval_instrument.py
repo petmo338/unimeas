@@ -29,7 +29,7 @@ class DummyIntervalInstrument(HasTraits):
     running = Bool
 
     output_channels = Dict({0: 'ch0', 1: 'ch1'})
-
+    measurement_info = Dict()
     enabled_channels = List(Bool)
 
     timer = Instance(Timer)
@@ -49,6 +49,7 @@ class DummyIntervalInstrument(HasTraits):
     iteration = Int(0)
     start_stop = Event
     button_label = Str('Start')
+    sweep_name = Str
     bias = Float
 
     traits_view = View(Group(Item('start_voltage'), Item('stop_voltage'),
@@ -62,6 +63,7 @@ class DummyIntervalInstrument(HasTraits):
                             Item('current_capacitance', enabled_when='False'),
                             label='C/F', show_border = True),
                         Item('update_interval'),
+                        Item('measurement_name'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
                         handler = DummyIntervalInstrumentHandler)
@@ -77,6 +79,13 @@ class DummyIntervalInstrument(HasTraits):
         self.iteration = 0
         self.running = True
         self.bias = random.random_sample() - 0.5
+        self.measurement_info = {'name': self.sweep_name,
+                                'start_voltage': self.start_voltage,
+                                'start_frequency': self.start_frequency,
+                                'start_bias': self.bias
+                                }
+        if len(self.measurement_info['name']) is 0:
+            self.measurement_info.pop('name')
 
     def stop(self):
         if self.timer is not None:
@@ -112,3 +121,12 @@ class DummyIntervalInstrument(HasTraits):
 
     def _enabled_channels_default(self):
         return [True, False]
+
+if __name__ == '__main__':
+    l = logging.getLogger()
+    console = logging.StreamHandler()
+    l.addHandler(console)
+    l.setLevel(logging.DEBUG)
+    l.info('test')
+    s = DummyIntervalInstrument()
+    s.configure_traits()

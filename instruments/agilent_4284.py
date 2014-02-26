@@ -1,8 +1,10 @@
 from i_instrument import IInstrument
 from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int, on_trait_change, Array,\
+    List, provides, Unicode, Str, Int, on_trait_change,\
    Event, Bool, Enum
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, HGroup, spring
+from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor
+import traits.has_traits
+traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from pyvisa import visa
 #import numpy as np
@@ -19,21 +21,21 @@ class ViewHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
+@provides(IInstrument)
 class Agilent4284(HasTraits):
 
-    implements(IInstrument)
+
 
     name = Unicode('Agilent 4284')
 
     x_units = Dict({0: 'Frequency', 1: 'Voltage'})
     y_units = Dict({0: 'Capacitance'})
-
+    measurement_info = Dict()
     acquired_data = List(Dict)
     output_channels = Dict({0: 'C/F', 1: 'C/V'})
     measurement_mode = Int
     start_stop = Event
     running = Bool
-
 
 
     enabled_channels = List(Bool)

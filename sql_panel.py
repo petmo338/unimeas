@@ -1,7 +1,8 @@
 from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
     Unicode, Str
-from traitsui.api import EnumEditor, TextEditor, Item, View, HGroup, VGroup, spring, Handler
+from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler
 from traitsui.menu import OKButton, CancelButton
+from generic_popup_message import GenericPopupMessage
 import csv
 import time
 import logging
@@ -9,12 +10,23 @@ import logging
 class CreateMeasurementPopup(Handler):
     measurement_name = Str
     measurement_description = Str
+    prepend_timestamp = Bool(True)
     
-    traits_view = View(Item('measurement_name', enabled_when = 'not running and save_in_database'),
-                       Item('measurement_description', enabled_when = 'not running and save_in_database', style = 'custom'),
+    traits_view = View(Item('measurement_name'),
+                       Item('prepend_timestamp'),
+                       Item('measurement_description', style = 'custom'),
                        buttons = [OKButton, CancelButton], kind = 'modal')
 
-        
+    def _measurement_name_default(self):
+        localtime   = time.localtime()
+        return time.strftime("%Y%m%d_%H%M%S_", localtime)
+
+    def _prepend_timestamp_changed(self, old, new):
+        if new == True:
+            self.measurement_name = self._measurement_name_default() + self.measurement_name
+        else:
+            self.measurement_name = ''
+
 
 class SQLWrapper():
 
@@ -55,8 +67,22 @@ class SQLWrapper():
         self.cursor = self.conn.cursor()
         return True
 
+    def get_measurements(self):
+        cursor = self.conn.cursor()
+        query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
+            + self.USER + '\';'
+        cursor.execute(query)
+        self.conn.commit()
+        result = cursor.fetchall()
+        retval = list()
+        for table in result:
+            retval.append(table[0])
+        return retval
+
+
     def set_table(self, column_names, name, comment = ''):
-        name = self.TABLE_NAME_PREPEND + name
+        if name[0].isalnum():
+            name = self.TABLE_NAME_PREPEND + name
         self.column_names = column_names
         self.DBAPI.paramstyle = "numeric"
         query = 'SELECT tablename FROM pg_tables where tablename like \'' + name + '\''
@@ -123,41 +149,45 @@ class SQLPanel(HasTraits):
     database_wrapper = Instance(SQLWrapper)
 #    instrument = Instance(IInstrument)
     selected_user = Str
-    refresh = Button
+    new_measurement = Button
     measurement_name = Str
     measurement_description = Str
     save_in_database = Bool(False)
-    prepend_timestamp = Bool(True)
+
     save_to_file = Bool
     running = Bool
     filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
     available_users = List(Unicode)
+    available_measurements = List(Unicode)
 
 
     traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when = 'not running'),
                             Item('selected_user',
                             editor=EnumEditor(name='available_users'),
                             enabled_when = 'not running and save_in_database'), spring,
-                        Item('refresh', show_label=False,  enabled_when = 'not running and save_in_database')),
-
-                        Item('prepend_timestamp', enabled_when = 'not running and save_in_database'),
-                        Item('measurement_name', enabled_when = 'not running and save_in_database'),
-                        Item('measurement_description', enabled_when = 'not running and save_in_database', style = 'custom'),
+                        Item('new_measurement', show_label=False,  enabled_when = 'not running and save_in_database')),
+                        Item('measurement_name',
+                            editor=EnumEditor(name='available_measurements'),
+                            enabled_when = 'not running and save_in_database'),
+                        Item('measurement_description', enabled_when = 'False', style = 'custom'),
                         Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
                         Item('filename', enabled_when = 'not running and save_to_file')))
+    
+    def _new_measurement_fired(self):
+        popup = CreateMeasurementPopup()
+        ui = popup.edit_traits()
+        if ui.result is True:
+            self.available_measurements.append(popup.measurement_name)
+            self.measurement_name = popup.measurement_name
+            self.measurement_description = popup.measurement_description
+
 
     def _available_users_default(self):
         return []
 
     def _measurement_name_default(self):
-        localtime   = time.localtime()
-        return time.strftime("%Y%m%d_%H%M%S_", localtime)
+        return ''
 
-    def _prepend_timestamp_changed(self, old, new):
-        if new == True:
-            self.measurement_name = self._measurement_name_default() + self.measurement_name
-        else:
-            self.measurement_name = ''
 
     def _selected_user_changed(self, old, new):
         if new == '':
@@ -166,6 +196,12 @@ class SQLPanel(HasTraits):
             self.save_in_database = True
             if not self.database_wrapper.change_database(new):
                 logging.getLogger('sql_panel').error('Unable to connect to database %s', new)
+                self.save_in_database = False
+                self.available_measurements = []
+                return
+            self.available_measurements = self.database_wrapper.get_measurements()
+            self.available_measurements.insert(0, '')
+            
 
     def _save_in_database_changed(self, new):
         if new:
@@ -174,6 +210,9 @@ class SQLPanel(HasTraits):
         else:
             del self.database_wrapper
             self.available_users = []
+
+    def set_column_names(self, column_names):
+        self.column_names = column_names
 
     def write_to_file(self, data):
         string_data = []
@@ -203,8 +242,12 @@ class SQLPanel(HasTraits):
     def start_stop(self, running):
         self.running = running
         if running and self.save_in_database:
-            self.database_wrapper.set_table(self.column_names, self.measurement_name,
-                self.measurement_description)
+            if len(self.measurement_name) == 0:
+                GenericPopupMessage(message = 'No measurement selected').edit_traits()
+                self.save_in_database = False
+            else:
+                self.database_wrapper.set_table(self.column_names, self.measurement_name,
+                    self.measurement_description)
 
         if running and self.save_to_file:
             try:

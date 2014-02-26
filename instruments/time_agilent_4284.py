@@ -1,13 +1,14 @@
 from i_instrument import IInstrument
-from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int, on_trait_change,\
+from traits.api import HasTraits, Instance, Float, Dict, \
+    List, provides, Unicode, Str, Int, on_trait_change,\
    Event, Bool, Enum
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, TableEditor
+from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, TableEditor
+import traits.has_traits
+traits.has_traits.CHECK_INTERFACES = 2
 from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
 from pyvisa import visa
 from time import time
-#import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,13 +45,13 @@ table_editor = TableEditor(
     sortable = False,
     row_factory = TableEntry )
 
-
+@provides(IInstrument)
 class Agilent4284(HasTraits):
 
-    implements(IInstrument)
+    
 
     name = Unicode('Agilent 4284')
-
+    measurement_info = Dict()
     x_units = Dict({0: 'SampleNumber', 1: 'Time'})
     y_units = Dict({0: 'Capacitance',  1: 'Frequency', 2: 'BIAS'})
 

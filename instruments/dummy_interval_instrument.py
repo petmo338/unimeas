@@ -1,8 +1,10 @@
 from i_instrument import IInstrument
-from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int, \
+from traits.api import HasTraits, Instance, Float, Dict, \
+    List, Unicode, Str, Int, provides,\
    Event, Bool
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler
+from traitsui.api import View, Item, Group, ButtonEditor, Handler
+import traits.has_traits
+traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from numpy import random
 import logging
@@ -14,9 +16,10 @@ class DummyIntervalInstrumentHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
+@provides(IInstrument)
 class DummyIntervalInstrument(HasTraits):
 
-    implements(IInstrument)
+#    implements(IInstrument)
 
     name = Unicode('DummyIntervalInstrument')
 

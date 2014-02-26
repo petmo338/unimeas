@@ -1,8 +1,10 @@
 from traits.api import Unicode, Dict, Int, Event, Bool, List,\
-    HasTraits, Str, Button, Float, implements, Instance, on_trait_change
+    HasTraits, Str, Button, Float, provides, Instance, on_trait_change
 
-from enthought.traits.ui.api import Group, HGroup, Item, View, Handler, \
+from traits.ui.api import Group, HGroup, Item, View, Handler, \
     ButtonEditor, EnumEditor
+import traits.has_traits
+traits.has_traits.CHECK_INTERFACES = 2    
 from i_instrument import IInstrument
 import logging
 from pyvisa import visa
@@ -40,12 +42,12 @@ class SourceMeterHandler(Handler):
         logging.getLogger(__name__).info('SourcemeterHandler.closed()')
         info.object.stop()
 
+@provides(IInstrument)
 class SourceMeter(HasTraits):
 
-    implements(IInstrument)
-
+    
     name = 'SourceMeter 2600'
-
+    measurement_info = Dict()
     x_units = Dict({0:'SampleNumber', 1:'Time'})
     y_units = Dict({0: 'Voltage', 1: 'Current', 2: 'Resistance'})
 

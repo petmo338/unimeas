@@ -180,7 +180,7 @@ class MeasureOverTimeTask(Task):
                 self.data_units.append(self.active_instrument.output_channels[i] + y_unit)
         self.data_units.append(self.gasmixer_panel.output_channels[0] + \
         self.gasmixer_panel.y_units.values()[0])
-        self.sql_panel.column_names = self.data_units
+        self.sql_panel.set_column_names(self.data_units)
 
     @on_trait_change('active_instrument.start_stop')
     def _start_stop(self):

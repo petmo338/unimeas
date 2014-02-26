@@ -1,13 +1,25 @@
 from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
     Unicode, Str
-from traitsui.api import EnumEditor, TextEditor, Item, View, HGroup, VGroup, spring
+from traitsui.api import EnumEditor, TextEditor, Item, View, HGroup, VGroup, spring, Handler
+from traitsui.menu import OKButton, CancelButton
 import csv
 import time
 import logging
 
+class CreateMeasurementPopup(Handler):
+    measurement_name = Str
+    measurement_description = Str
+    
+    traits_view = View(Item('measurement_name', enabled_when = 'not running and save_in_database'),
+                       Item('measurement_description', enabled_when = 'not running and save_in_database', style = 'custom'),
+                       buttons = [OKButton, CancelButton], kind = 'modal')
+
+        
+
 class SQLWrapper():
 
-    SERVER_HOST = 'pc15389.sensor.lab'
+#    SERVER_HOST = 'pc15389.sensor.lab'
+    SERVER_HOST = 'localhost'
     USER = 'sensor'
     PASSWORD = 'sensor'
     table_name = ''

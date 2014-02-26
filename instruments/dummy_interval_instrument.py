@@ -63,7 +63,7 @@ class DummyIntervalInstrument(HasTraits):
                             Item('current_capacitance', enabled_when='False'),
                             label='C/F', show_border = True),
                         Item('update_interval'),
-                        Item('measurement_name'),
+                        Item('sweep_name'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
                         handler = DummyIntervalInstrumentHandler)

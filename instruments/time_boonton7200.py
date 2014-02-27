@@ -1,7 +1,9 @@
 from i_instrument import IInstrument
-from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int,Event, Bool
-from enthought.traits.ui.api import View, Item, ButtonEditor, Handler, EnumEditor, RangeEditor, Group, TableEditor
+from traits.api import HasTraits, Instance, Float, Dict, \
+    List, provides, Unicode, Str, Int,Event, Bool
+from traitsui.api import View, Item, ButtonEditor, Handler, EnumEditor, RangeEditor, Group, TableEditor
+import traits.has_traits
+traits.has_traits.CHECK_INTERFACES = 2
 from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
 from pyvisa import visa
@@ -40,12 +42,11 @@ table_editor = TableEditor(
     sortable = False,
     row_factory = TableEntry )
 
+@provides(IInstrument)
 class Boonton7200(HasTraits):
 
-    implements(IInstrument)
-
     name = Unicode('Boonton7200')
-
+    measurement_info = Dict()
     x_units = Dict({0: 'SampleNumber', 1: 'Time'})
     y_units = Dict({0: 'Capacitance'})
 

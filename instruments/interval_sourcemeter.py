@@ -1,7 +1,9 @@
 from i_instrument import IInstrument
-from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int, Event, Bool, Enum, Button
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
+from traits.api import HasTraits, Instance, Float, Dict, \
+    List, provides, Unicode, Str, Int, Event, Bool, Enum, Button
+from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
+import traits.has_traits
+traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from pyvisa import visa
 from time import sleep
@@ -18,14 +20,14 @@ class ViewHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
+@provides(IInstrument)
 class SourceMeter(HasTraits):
-
-    implements(IInstrument)
 
     name = Unicode('SourceMeter I/V')
 
     x_units = Dict({0: 'Voltage'})
     y_units = Dict({0: 'Current'})
+    measurement_info = Dict()
     acquired_data = List(Dict)
     start_stop = Event
     running = Bool

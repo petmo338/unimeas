@@ -11,7 +11,7 @@ class CreateMeasurementPopup(Handler):
     measurement_name = Str
     measurement_description = Str
     prepend_timestamp = Bool(True)
-    
+
     traits_view = View(Item('measurement_name'),
                        Item('prepend_timestamp'),
                        Item('measurement_description', style = 'custom'),
@@ -30,8 +30,8 @@ class CreateMeasurementPopup(Handler):
 
 class SQLWrapper():
 
-#    SERVER_HOST = 'pc15389.sensor.lab'
-    SERVER_HOST = 'localhost'
+    SERVER_HOST = 'pc15389.sensor.lab'
+#    SERVER_HOST = 'localhost'
     USER = 'sensor'
     PASSWORD = 'sensor'
     table_name = ''
@@ -172,7 +172,7 @@ class SQLPanel(HasTraits):
                         Item('measurement_description', enabled_when = 'False', style = 'custom'),
                         Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
                         Item('filename', enabled_when = 'not running and save_to_file')))
-    
+
     def _new_measurement_fired(self):
         popup = CreateMeasurementPopup()
         ui = popup.edit_traits()
@@ -201,7 +201,7 @@ class SQLPanel(HasTraits):
                 return
             self.available_measurements = self.database_wrapper.get_measurements()
             self.available_measurements.insert(0, '')
-            
+
 
     def _save_in_database_changed(self, new):
         if new:

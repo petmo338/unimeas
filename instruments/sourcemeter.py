@@ -78,7 +78,7 @@ class SourceMeter(HasTraits):
     current_range = Str('Auto')
     voltage_range = Str('Auto')
     sampling_interval = Float(1.0)
-    start_stop = Event
+
     button_label = Str('Start')
     _available_devices_map = Dict(Unicode, Unicode)
     running = Bool(False)

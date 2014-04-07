@@ -135,6 +135,15 @@ class MeasureOverTimeTask(Task):
             pass
         else:
             instruments.append(Boonton7200())
+            
+        try:
+            from instruments.time_agilent_4284 import Agilent4284
+        except ImportError:
+            pass
+        except WindowsError:
+            pass
+        else:
+            instruments.append(Agilent4284())
 
         return instruments
 

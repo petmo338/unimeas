@@ -71,7 +71,7 @@ class Agilent4284(HasTraits):
     osc_level = Float(0.5)
 
     mode = Enum('CpD', 'CpQ','CpG', 'CpRp', 'CsD', 'CsQ', 'CsRs')
-    current_frequency = Int
+    current_frequency = Float
     current_capacitance = Float
     current_bias = Float
     start_time = Float
@@ -167,7 +167,7 @@ class Agilent4284(HasTraits):
 
         self.current_frequency = float(self.instrument.ask('FREQ?'))
         self.current_capacitance =  values[0]
-        d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_frequency,
+        d[self.output_channels[0]] = (dict({self.x_units[0] : self.sample_nr,
                                             self.x_units[1] : time() - self.start_time}),
                                         dict({self.y_units[0] : self.current_capacitance,
                                             self.y_units[1] : self.current_frequency,
@@ -176,15 +176,15 @@ class Agilent4284(HasTraits):
 #        self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
         self.acquired_data.append(d)
-        try:
-            command = ''
-            if self.measurement_mode is 0:
-                command = 'FREQ ' + str(self.output_list[self.sample_nr])
-            elif self.measurement_mode is 1:
-                command = 'BIAS:VOLT ' + str(self.output_list[self.sample_nr])
-            self.instrument.write(command)
-        except IndexError:
-            self.start_stop = True
+        #try:
+        #    command = ''
+        #    if self.measurement_mode is 0:
+        #        command = 'FREQ ' + str(self.output_list[self.sample_nr])
+        #    elif self.measurement_mode is 1:
+        #        command = 'BIAS:VOLT ' + str(self.output_list[self.sample_nr])
+        #    self.instrument.write(command)
+        #except IndexError:
+        #    self.start_stop = True
 
     def _start_stop_fired(self):
         if self.instrument is None:

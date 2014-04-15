@@ -130,6 +130,13 @@ class MeasureOverTimeTask(Task):
             instruments.append(NI6215())
 
         try:
+            from instruments.SB50_moslab import NI6215_MOSLab
+        except ImportError:
+            pass
+        else:
+            instruments.append(NI6215_MOSLab())
+
+        try:
             from instruments.time_boonton7200 import Boonton7200
         except ImportError:
             pass

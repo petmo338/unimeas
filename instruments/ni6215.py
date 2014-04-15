@@ -164,7 +164,7 @@ class NI6215(HasTraits):
             device = self._available_devices_map.items()[0][0]
         except IndexError:
             return ''     
-        self._selected_device_changed(device)
+        #self._selected_device_changed(device)
         return device
 
     def _refresh_list_fired(self):

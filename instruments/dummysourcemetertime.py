@@ -1,10 +1,10 @@
 import logging
 from traits.api import HasTraits, Range, Instance, Float, Dict, \
-    List, provides, Unicode, Str, Array, Int, \
+    List, Unicode, Str, Array, Int, \
    Event, Bool
 from traitsui.api import View, Item, Group, ButtonEditor, HGroup, Handler
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from threading import Thread
 from time import sleep, time
 from numpy import random
@@ -72,7 +72,7 @@ class DummySourcemeterTimeHandler(Handler):
         #        sleep(0.1)
 #        return
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class DummySourcemeterTime(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
 

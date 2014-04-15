@@ -1,10 +1,10 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, Unicode, Str, Int, provides,\
+    List, Unicode, Str, Int, \
    Event, Bool
 from traitsui.api import View, Item, Group, ButtonEditor, Handler
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from numpy import random
 import logging
@@ -16,7 +16,7 @@ class DummyIntervalInstrumentHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class DummyIntervalInstrument(HasTraits):
 
 #    implements(IInstrument)

@@ -6,7 +6,10 @@ from instruments.i_instrument import IInstrument
 import pyqtgraph as pg
 import numpy as np
 import logging
+import copy
 logger = logging.getLogger(__name__)
+pg.setConfigOption('background', 'w')
+pg.setConfigOption('foreground', 'k')
 
 COLOR_MAP = ['FFA0FFFF', 'FF8080FF', 'FF40FFFF', 'FF0080FF',\
             '00FFFFFF','00FF90FF','00FF40FF','00FF00FF',\
@@ -46,7 +49,7 @@ class IntervalPlotPanel(HasTraits):
         self.hLine = pg.InfiniteLine(angle=0, movable=False, pen = ({'color' : '80808080', 'width': 1}))
         plot.addItem(self.vLine, ignoreBounds=True)
         plot.addItem(self.hLine, ignoreBounds=True)
-        self.label = pg.TextItem(anchor = (1,1))
+        self.label = pg.TextItem(anchor = (1,1), color = 'r')
         plot.addItem(self.label)
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
@@ -114,22 +117,26 @@ class IntervalPlotPanel(HasTraits):
             if not self.keep_plots:
                 self._clear_plots_fired()
                 self.plot_index = 0
-            self.plots[self.plot_index] = pg.PlotCurveItem(x=[], y=[],
+            self.plots[self.plot_index] = pg.PlotCurveItem(
                 pen = COLOR_MAP[self.plot_index % len(COLOR_MAP)],
                 name=instrument.measurement_info.get('name', str(self.plot_index)))
             self.plot_widget.addItem(self.plots[self.plot_index])
             self.index = 0
         else:
+            if self.index > 0:
+                self.plots[self.plot_index].updateData(copy.deepcopy(self.data[0][:self.index]),
+                                                copy.deepcopy(self.data[1][:self.index]))
             self.plot_index += 1
 
     def add_data(self, data):
+        self.index += 1
         channel_data_x = data[self.channel_name][0]
         channel_data_y = data[self.channel_name][self.selected_y_unit + 1]
-        self.data[0][self.index] = channel_data_x.values()[0]
-        self.data[1][self.index] = channel_data_y.values()[0]
-        self.plots[self.plot_index].setData(x=self.data[0][:self.index],\
-                                        y=self.data[1][:self.index])
-        self.index += 1
+        self.data[0][self.index - 1] = channel_data_x.values()[0]
+        self.data[1][self.index - 1] = channel_data_y.values()[0]
+        self.plots[self.plot_index].updateData(self.data[0][:self.index],
+                                            self.data[1][:self.index])
+
 
 if __name__ == '__main__':
     p = IntervalPlotPanel()

@@ -1,10 +1,10 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, provides, Unicode, Str, Int, on_trait_change,\
+    List, Unicode, Str, Int, on_trait_change,\
    Event, Bool, Enum
 from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, TableEditor
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
 from pyvisa import visa
@@ -45,10 +45,10 @@ table_editor = TableEditor(
     sortable = False,
     row_factory = TableEntry )
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class Agilent4284(HasTraits):
 
-    
+
 
     name = Unicode('Agilent 4284')
     measurement_info = Dict()

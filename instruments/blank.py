@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from traits.api import HasTraits, Range, provides, \
+from traits.api import HasTraits, Range, \
     Unicode, Dict, Event, Bool, List
 from traitsui.api import View, Item, Group, Label
 
@@ -11,7 +11,7 @@ INFO_STRING = """
     Then, select the instrument you intend to use.
     """
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class Blank(HasTraits):
     """Empty instrument"""
 
@@ -48,7 +48,7 @@ class Blank(HasTraits):
 
     def _enabled_channels_default(self):
         return [False]
-        
+
 if __name__ is '__main__':
-    
+
     b = Blank().configure_traits()

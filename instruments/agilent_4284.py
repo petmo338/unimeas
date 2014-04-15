@@ -1,10 +1,10 @@
 from i_instrument import IInstrument
 from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, provides, Unicode, Str, Int, on_trait_change,\
+    List,  Unicode, Str, Int, on_trait_change,\
    Event, Bool, Enum
 from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from pyvisa import visa
 #import numpy as np
@@ -21,7 +21,7 @@ class ViewHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class Agilent4284(HasTraits):
 
 

@@ -1,9 +1,9 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, provides, Unicode, Str, Int, Event, Bool, Enum, Button
+    List, Unicode, Str, Int, Event, Bool, Enum, Button
 from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from pyvisa import visa
 from time import sleep
@@ -20,7 +20,7 @@ class ViewHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class SourceMeter(HasTraits):
 
     name = Unicode('SourceMeter I/V')
@@ -94,7 +94,7 @@ class SourceMeter(HasTraits):
             self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.rangei = %e'  % ((self.current_limit * 1.1)/1000))
             self.instrument.write('smua.measure.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
-            
+
             self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
             self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
             self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
@@ -134,7 +134,7 @@ class SourceMeter(HasTraits):
             if count > 5:
                 self.acquired_data = dict()
                 return
-        
+
 
     def _onTimer(self):
         self.timer.Stop()

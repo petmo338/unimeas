@@ -1,9 +1,9 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, provides, Unicode, Str, Int,Event, Bool
+    List, Unicode, Str, Int,Event, Bool
 from traitsui.api import View, Item, ButtonEditor, Handler, EnumEditor, RangeEditor, Group, TableEditor
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
 from pyvisa import visa
@@ -42,7 +42,7 @@ table_editor = TableEditor(
     sortable = False,
     row_factory = TableEntry )
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class Boonton7200(HasTraits):
 
     name = Unicode('Boonton7200')
@@ -196,7 +196,7 @@ class Boonton7200(HasTraits):
 
     def _enabled_channels_default(self):
         return [True, False]
-        
+
     def _bias_table_default(self):
         return [TableEntry(time = 10, bias = 0.0, remaining = 0),
                 TableEntry(time = 10, bias = 0.5, remaining = 0)]

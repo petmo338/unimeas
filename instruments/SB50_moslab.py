@@ -1,10 +1,10 @@
 import logging
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
-    List, provides, Unicode, Str, Int, on_trait_change, Event, Button
+    List, Unicode, Str, Int, on_trait_change, Event, Button
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
 import traits.has_traits
-traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from time import time
 from PyDAQmx.DAQmxFunctions import TaskHandle, DAQmxCreateTask, \
     DAQmxCreateDOChan, DAQmxStartTask, DAQmxStopTask, DAQmxWriteDigitalLines, \
@@ -93,7 +93,7 @@ class NI6215Handler(Handler):
             info.object.acqusition_task.StopTask()
             info.object.acqusition_task.ClearTask()
 
-@provides(IInstrument)
+#@provides(IInstrument)
 class NI6215_MOSLab(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
     CHANNEL_CELL_WIDTH = 25.0

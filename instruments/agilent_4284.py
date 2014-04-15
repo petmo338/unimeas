@@ -66,6 +66,7 @@ class Agilent4284(HasTraits):
     sample_nr = Int(0)
     start_stop = Event
     button_label = Str('Start')
+    sweep_name = Str
 
 
 
@@ -95,6 +96,7 @@ class Agilent4284(HasTraits):
                             label='C/V', show_border = True, enabled_when = 'measurement_mode == 1'),
 
                         Item('update_interval'),
+                        Item('sweep_name'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
                         handler = ViewHandler)
@@ -137,6 +139,13 @@ class Agilent4284(HasTraits):
         #    self.current_frequency = self.start_frequency
         #elif self.measurement_mode is 1:
         #    pass
+        self.measurement_info = {'name': self.sweep_name,
+                                'start_voltage': self.start_voltage,
+                                'start_frequency': self.start_frequency,
+                                'start_bias': self.bias
+                                }
+        if len(self.measurement_info['name']) is 0:
+            self.measurement_info.pop('name')
         self.sample_nr = 0
         self.running = True
         self.instrument_init()

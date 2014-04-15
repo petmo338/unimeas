@@ -51,6 +51,7 @@ class SourceMeter(HasTraits):
     sample_nr = Int(0)
     start_stop = Event
     button_label = Str('Start')
+    sweep_name = Str
 
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
@@ -73,6 +74,7 @@ class SourceMeter(HasTraits):
                             Item('current_limit_exceeded', style = 'readonly', editor=BooleanEditor(mapping={'CURRENT TOO HIGH':True, '':False})),
                             label='I/V', show_border = True),
                         Item('update_interval'),
+                        Item('sweep_name'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
                         handler = ViewHandler)
@@ -110,6 +112,14 @@ class SourceMeter(HasTraits):
 
 
     def start(self):
+        self.measurement_info = {'name': self.sweep_name,
+                        'start_voltage': self.start_voltage,
+                        'start_frequency': self.start_frequency,
+                        'start_bias': self.bias
+                        }
+        if len(self.measurement_info['name']) is 0:
+            self.measurement_info.pop('name')
+
         self.button_label = 'Stop'
         self.sample_nr = 0
         self.running = True

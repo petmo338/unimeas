@@ -1,8 +1,10 @@
 import logging
-from enthought.traits.api import HasTraits, Range, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Array, Int, \
+from traits.api import HasTraits, Range, Instance, Float, Dict, \
+    List, Unicode, Str, Array, Int, \
    Event, Bool
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, HGroup, Handler
+from traitsui.api import View, Item, Group, ButtonEditor, HGroup, Handler
+import traits.has_traits
+#traits.has_traits.CHECK_INTERFACES = 2
 from threading import Thread
 from time import sleep, time
 from numpy import random
@@ -70,10 +72,10 @@ class DummySourcemeterTimeHandler(Handler):
         #        sleep(0.1)
 #        return
 
+#@provides(IInstrument)
 class DummySourcemeterTime(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
 
-    implements(IInstrument)
 
     mean_voltage = Range(-10.0, 10.0, 3.1)
     mean_current = Range(0, .1, 0.0034)
@@ -87,10 +89,10 @@ class DummySourcemeterTime(HasTraits):
     start_stop = Event
     button_label = Str('Start')
     acquisition_thread = Instance(AcquisitionThread)
-    running = False
+    running = Bool(False)
     output_unit = 0
     timebase = 0
-
+    measurement_info = Dict()
     queue = Queue.Queue()
 
     parameter_group = Group(

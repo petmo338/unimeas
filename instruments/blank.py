@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
-from enthought.traits.api import HasTraits, Range, implements, \
-    Unicode, Int, Dict, Event, Bool, List
-from enthought.traits.ui.api import View, Item, Group, Label
+from traits.api import HasTraits, Range, \
+    Unicode, Dict, Event, Bool, List
+from traitsui.api import View, Item, Group, Label
 
 from i_instrument import IInstrument
 
@@ -11,10 +11,9 @@ INFO_STRING = """
     Then, select the instrument you intend to use.
     """
 
+#@provides(IInstrument)
 class Blank(HasTraits):
     """Empty instrument"""
-
-    implements(IInstrument)
 
     some_parameter = Range(-10.0, 10.0, 3.1)
 
@@ -35,7 +34,7 @@ class Blank(HasTraits):
 
     y_units = Dict({0: 'None'})
     x_units = Dict({0:'None'})
-
+    measurement_info = Dict()
     start_stop = Event
     running = Bool
     output_channels = Dict({0: 'none'})
@@ -49,7 +48,7 @@ class Blank(HasTraits):
 
     def _enabled_channels_default(self):
         return [False]
-        
+
 if __name__ is '__main__':
-    
+
     b = Blank().configure_traits()

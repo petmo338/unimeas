@@ -139,4 +139,4 @@ class MeasureIntervalTask(Task):
         if not self.active_instrument.running:
             self._dispatch_data()
         for subscriber in self.start_stop_subscribers:
-            subscriber.start_stop(self.active_instrument.running)
+            subscriber.start_stop(self.active_instrument)

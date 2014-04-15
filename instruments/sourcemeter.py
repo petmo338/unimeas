@@ -1,8 +1,10 @@
 from traits.api import Unicode, Dict, Int, Event, Bool, List,\
-    HasTraits, Str, Button, Float, implements, Instance, on_trait_change
+    HasTraits, Str, Button, Float,  Instance, on_trait_change
 
-from enthought.traits.ui.api import Group, HGroup, Item, View, Handler, \
+from traitsui.api import Group, HGroup, Item, View, Handler, \
     ButtonEditor, EnumEditor
+#import traits.has_traits
+#traits.has_traits.CHECK_INTERFACES = 2
 from i_instrument import IInstrument
 import logging
 from pyvisa import visa
@@ -40,12 +42,12 @@ class SourceMeterHandler(Handler):
         logging.getLogger(__name__).info('SourcemeterHandler.closed()')
         info.object.stop()
 
+#@provides(IInstrument)
 class SourceMeter(HasTraits):
 
-    implements(IInstrument)
-
-    name = 'SourceMeter 2600'
-
+#    implements(IInstrument)
+    name = Unicode('SourceMeter 2600')
+    measurement_info = Dict()
     x_units = Dict({0:'SampleNumber', 1:'Time'})
     y_units = Dict({0: 'Voltage', 1: 'Current', 2: 'Resistance'})
 
@@ -54,9 +56,14 @@ class SourceMeter(HasTraits):
     start_stop = Event
     running = Bool
 
-    output_channels = Dict({0: 'smua'})
-    """ Must not have overlapping names \
+#    output_channels = Dict({0: 'smua0', 1: 'smua1', 2: 'smua2', 3: 'smua3'})
+    output_channels = Dict({0: 'smua0'})
+    """ Must not have overlapping names/numbers \
         i.e. ai1, ai12, ai13 will generate error """
+    smua0_enabled = Bool(True)
+    smua1_enabled = Bool(False)
+    smua2_enabled = Bool(False)
+    smua3_enabled = Bool(False)
     enabled_channels = List(Bool)
     instrument = Instance(visa.Instrument)
     acquisition_thread = Instance(AcquisitionThread)
@@ -98,14 +105,22 @@ class SourceMeter(HasTraits):
                             editor = EnumEditor(name='_voltage_range_map'))), \
                                     Item('sampling_interval'), show_border = True, \
                                     label = 'Measurement ranges')
-
+    enabled_channels_group = HGroup(Item('smua0_enabled', label = '0'),
+                                    Item('smua1_enabled', label = '1', enabled_when = 'False'),
+                                    Item('smua2_enabled', label = '2', enabled_when = 'False'),
+                                    Item('smua3_enabled', label = '3', enabled_when = 'False'),
+                                    show_border = True, label = 'Enabled channels',
+                                    enabled_when = 'not running')
     traits_view = View(HGroup(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
-                                enabled_when='not running'), Item('identify_button', enabled_when = 'selected_device != \'\'')), \
-                        measurement_settings_group,\
-                        instrument_settings_group,\
+                                enabled_when='not running'), Item('identify_button',
+                                enabled_when = 'selected_device != \'\'')), \
+                        measurement_settings_group,
+                        instrument_settings_group,
+                        enabled_channels_group,
                         Item('start_stop', label = 'Start/Stop Acqusistion',\
-                            editor = ButtonEditor(label_value='button_label'), enabled_when = 'selected_device != \'\''),\
+                            editor = ButtonEditor(label_value='button_label'),
+                            enabled_when = 'selected_device != \'\''),\
                         handler = SourceMeterHandler)
     def __init__(self, **traits):
         super(SourceMeter, self).__init__(**traits)
@@ -180,7 +195,8 @@ class SourceMeter(HasTraits):
             self.button_label = 'Stop'
 
     def _enabled_channels_default(self):
-        return [True] * 1
+        return [self.smua0_enabled]#, self.smua1_enabled,
+#                self.smua2_enabled, self.smua3_enabled]
 
     def start(self):
         self.instrument.write('reset()')
@@ -248,6 +264,10 @@ class SourceMeter(HasTraits):
                                 dict({self.y_units[0]:data[2], \
                                    self.y_units[1]:data[3], \
                                    self.y_units[2]:data[4],}))
+        #d[self.output_channels[1]] = (dict({}), dict({}))
+        #d[self.output_channels[2]] = (dict({}), dict({}))
+        #d[self.output_channels[3]] = (dict({}), dict({}))
+        
         self.acquired_data.append(d)
 
     @on_trait_change('constant_current_mode, constant_voltage_mode')

@@ -1,7 +1,9 @@
 from i_instrument import IInstrument
-from enthought.traits.api import HasTraits, Instance, Float, Dict, \
-    List, implements, Unicode, Str, Int, Event, Bool, Enum, Button
-from enthought.traits.ui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
+from traits.api import HasTraits, Instance, Float, Dict, \
+    List, Unicode, Str, Int, Event, Bool, Enum, Button
+from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
+import traits.has_traits
+#traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
 from pyvisa import visa
 from time import sleep
@@ -18,14 +20,14 @@ class ViewHandler(Handler):
         if info.object.timer is not None:
             info.object.timer.Stop()
 
+#@provides(IInstrument)
 class SourceMeter(HasTraits):
-
-    implements(IInstrument)
 
     name = Unicode('SourceMeter I/V')
 
     x_units = Dict({0: 'Voltage'})
     y_units = Dict({0: 'Current'})
+    measurement_info = Dict()
     acquired_data = List(Dict)
     start_stop = Event
     running = Bool
@@ -49,6 +51,7 @@ class SourceMeter(HasTraits):
     sample_nr = Int(0)
     start_stop = Event
     button_label = Str('Start')
+    sweep_name = Str
 
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
@@ -71,6 +74,7 @@ class SourceMeter(HasTraits):
                             Item('current_limit_exceeded', style = 'readonly', editor=BooleanEditor(mapping={'CURRENT TOO HIGH':True, '':False})),
                             label='I/V', show_border = True),
                         Item('update_interval'),
+                        Item('sweep_name'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
                         handler = ViewHandler)
@@ -92,7 +96,7 @@ class SourceMeter(HasTraits):
             self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.rangei = %e'  % ((self.current_limit * 1.1)/1000))
             self.instrument.write('smua.measure.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
-            
+
             self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
             self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
             self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
@@ -108,6 +112,14 @@ class SourceMeter(HasTraits):
 
 
     def start(self):
+        self.measurement_info = {'name': self.sweep_name,
+                        'start_voltage': self.start_voltage,
+                        'stop_voltage': self.stop_voltage,
+                        'step_voltage': self.step_voltage
+                        }
+        if len(self.measurement_info['name']) is 0:
+            self.measurement_info.pop('name')
+
         self.button_label = 'Stop'
         self.sample_nr = 0
         self.running = True
@@ -132,7 +144,7 @@ class SourceMeter(HasTraits):
             if count > 5:
                 self.acquired_data = dict()
                 return
-        
+
 
     def _onTimer(self):
         self.timer.Stop()

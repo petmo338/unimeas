@@ -7,6 +7,8 @@ import pyqtgraph as pg
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
+pg.setConfigOption('background', 'w')
+pg.setConfigOption('foreground', 'k')
 
 DATA_LINES = 172800
 COLOR_MAP = ['FFA0FFFF', 'FF8080FF', 'FF40FFFF', 'FF0080FF',\
@@ -137,10 +139,14 @@ class PlotPanel(HasTraits):
     def _selected_x_unit_changed(self, unit):
         self.plot_widget.setLabel('bottom', self.x_units[unit], units = SI_ACR.get(self.x_units[unit], unit))
         self.selected_x_unit = unit
+        for channel in self.plots.keys():
+            self.plots[channel].viewTransformChanged()
 
     def _selected_y_unit_changed(self, unit):
         self.plot_widget.setLabel('left', self.y_units[unit], units = SI_ACR.get(self.y_units[unit], unit))
         self.selected_y_unit = unit
+        for channel in self.plots.keys():
+            self.plots[channel].viewTransformChanged()
 
     def _x_units_changed(self):
         self._selected_x_unit_changed(0)

@@ -1,9 +1,9 @@
 from traits.api import Unicode, Dict, Int, Event, Bool, List,\
     HasTraits, Str, Button, Float,  Instance, on_trait_change
 
-from traits.ui.api import Group, HGroup, Item, View, Handler, \
+from traitsui.api import Group, HGroup, Item, View, Handler, \
     ButtonEditor, EnumEditor
-import traits.has_traits
+#import traits.has_traits
 #traits.has_traits.CHECK_INTERFACES = 2
 from i_instrument import IInstrument
 import logging
@@ -45,8 +45,8 @@ class SourceMeterHandler(Handler):
 #@provides(IInstrument)
 class SourceMeter(HasTraits):
 
-
-    name = 'SourceMeter 2600'
+#    implements(IInstrument)
+    name = Unicode('SourceMeter 2600')
     measurement_info = Dict()
     x_units = Dict({0:'SampleNumber', 1:'Time'})
     y_units = Dict({0: 'Voltage', 1: 'Current', 2: 'Resistance'})
@@ -56,7 +56,8 @@ class SourceMeter(HasTraits):
     start_stop = Event
     running = Bool
 
-    output_channels = Dict({0: 'smua0', 1: 'smua1', 2: 'smua2', 3: 'smua3'})
+#    output_channels = Dict({0: 'smua0', 1: 'smua1', 2: 'smua2', 3: 'smua3'})
+    output_channels = Dict({0: 'smua0'})
     """ Must not have overlapping names/numbers \
         i.e. ai1, ai12, ai13 will generate error """
     smua0_enabled = Bool(True)
@@ -194,8 +195,8 @@ class SourceMeter(HasTraits):
             self.button_label = 'Stop'
 
     def _enabled_channels_default(self):
-        return [self.smua0_enabled, self.smua1_enabled,
-                self.smua2_enabled, self.smua3_enabled]
+        return [self.smua0_enabled]#, self.smua1_enabled,
+#                self.smua2_enabled, self.smua3_enabled]
 
     def start(self):
         self.instrument.write('reset()')
@@ -263,6 +264,10 @@ class SourceMeter(HasTraits):
                                 dict({self.y_units[0]:data[2], \
                                    self.y_units[1]:data[3], \
                                    self.y_units[2]:data[4],}))
+        #d[self.output_channels[1]] = (dict({}), dict({}))
+        #d[self.output_channels[2]] = (dict({}), dict({}))
+        #d[self.output_channels[3]] = (dict({}), dict({}))
+        
         self.acquired_data.append(d)
 
     @on_trait_change('constant_current_mode, constant_voltage_mode')

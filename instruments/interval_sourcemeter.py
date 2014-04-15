@@ -114,8 +114,8 @@ class SourceMeter(HasTraits):
     def start(self):
         self.measurement_info = {'name': self.sweep_name,
                         'start_voltage': self.start_voltage,
-                        'start_frequency': self.start_frequency,
-                        'start_bias': self.bias
+                        'stop_voltage': self.stop_voltage,
+                        'step_voltage': self.step_voltage
                         }
         if len(self.measurement_info['name']) is 0:
             self.measurement_info.pop('name')

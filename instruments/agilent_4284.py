@@ -139,11 +139,21 @@ class Agilent4284(HasTraits):
         #    self.current_frequency = self.start_frequency
         #elif self.measurement_mode is 1:
         #    pass
-        self.measurement_info = {'name': self.sweep_name,
-                                'start_voltage': self.start_voltage,
+
+        
+        if self.measurement_mode is 0:
+            self.measurement_info = {'name': self.sweep_name,
                                 'start_frequency': self.start_frequency,
-                                'start_bias': self.bias
+                                'stop_frequency': self.stop_frequency,
+                                'bias': self.bias
                                 }
+        else:
+            self.measurement_info = {'name': self.sweep_name,
+                                'start_bias': self.start_frequency,
+                                'stop_bias': self.stop_frequency,
+                                'step_bias': self.step_bias,
+                                'frequency': self.cv_frequency
+                                }                            
         if len(self.measurement_info['name']) is 0:
             self.measurement_info.pop('name')
         self.sample_nr = 0

@@ -112,7 +112,7 @@ class MeasureOverTimeTask(Task):
             pass
         else:
             instruments.append(DummySourcemeterTime())
-
+        
         try:
             from instruments.sourcemeter import SourceMeter
         except ImportError:

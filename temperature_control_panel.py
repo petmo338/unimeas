@@ -1,9 +1,13 @@
 from enthought.traits.api import HasTraits, Bool, Int, List, Float, Instance, \
-    Str
-from traitsui.api import Item, View, Group,Handler, \
-    TableEditor
+    Str, Button
+from traitsui.api import Item, View, Group, HGroup, Handler, \
+    TableEditor, EnumEditor
 from traitsui.table_column import NumericColumn
 import logging
+import serial
+import os
+import time
+from serial.tools import list_ports
 from pyface.timer.api import Timer
 import numpy as np
 logger = logging.getLogger(__name__)
@@ -42,6 +46,7 @@ class TemperatureControlHandler(Handler):
 
 class TemperatureControlPanel(HasTraits):
     UPDATE_INTERVAL = 500.0
+    BAUD_RATE = 115200
     pane_name = Str('Temperature control ')
     pane_id = Str('sensorscience.unimeas.temperatur_control_pane')
     enable = Bool(False)
@@ -50,13 +55,20 @@ class TemperatureControlPanel(HasTraits):
     table_entries = List(TableEntry)
     current_row = Int(0)
     current_temp = Int(0)
+    actual_temp = Int
     current_time = Float
     row_start_time = Float
     running = False
 
+    controller = Instance(serial.Serial)
     temperature_table = List(Int)
-
-    traits_view = View(Item('enable'),
+    selected_com_port = Str
+    com_ports_list = List(Str)
+    test_com = Button
+    traits_view = View(HGroup(Item('selected_com_port',  label = 'Com port', \
+                                editor = EnumEditor(name='com_ports_list'), \
+                                enabled_when='not running'), Item('test_com', enabled_when = 'selected_com_port != \'\'')),
+                    Item('enable'),
         Group(
             Item( 'table_entries',
                   show_label  = False,
@@ -65,6 +77,7 @@ class TemperatureControlPanel(HasTraits):
             ),
             show_border = True,
         ),
+        Item('actual_temp'),
         resizable = True,
         kind      = 'live',
         handler = TemperatureControlHandler
@@ -77,6 +90,14 @@ class TemperatureControlPanel(HasTraits):
             self.start_stop(False)
         if self.temperature_table[index] is not self.current_temp:
             self.current_temp = self.temperature_table[index]
+        time_left = self.table_entries[self.current_row].time + self.row_start_time - self.current_time
+        self.table_entries[self.current_row].remaining = int(time_left)
+        if self.table_entries[self.current_row].remaining < 1:
+            self.current_row += 1
+            self.row_changed(time_left)
+
+        self.controller.flushInput()
+        self.actual_temp = int(self.controller.readline()[:-2])
 
     def _table_entries_default(self):
         return [TableEntry(time = 10, start_temp = 50, end_temp = 50, remaining = -1),
@@ -90,14 +111,18 @@ class TemperatureControlPanel(HasTraits):
         self.running = running
         if running:
             self.calculate_temperature_table()
-            self.timer = Timer(self.UPDATE_INTERVAL, self._onTimer)
-            self.timer.start()
+            self.controller = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=self.UPDATE_INTERVAL)
+            self.controller.flushInput()
+            self.controller.flushOutput()
             self.current_row = 0
             self.row_changed(0)
             self.current_time = 0
             self.current_temp = self.temperature_table[0]
+            self.timer = Timer(self.UPDATE_INTERVAL, self._onTimer)
             
         else:
+            if self.controller is not None:
+                self.controller.close()
             if self.timer is not None:
                 self.timer.Stop()
 
@@ -117,16 +142,127 @@ class TemperatureControlPanel(HasTraits):
         if self.current_row >= len(self.table_entries):
             return
 
-
     def _current_temp_changed(self, new):
-        logger.info('Send %s to temp controller', new)   
+        logger.info('Send %s to temp controller', new)        
+        self.controller.write('%d' % new)   
 
+    def _com_ports_list_default(self):
+        return ['/dev/ttyACM0']
+
+                
+    #def _com_ports_list_default(self):
+    #    l = []
+    #    if os.name == 'nt':
+    #        # windows
+    #        for i in range(256):
+    #            try:
+    #                s = serial.Serial(i)
+    #                s.close()
+    #                l.append('COM' + str(i + 1))
+    #            except serial.SerialException:
+    #                pass
+    #    else:
+    #        # unix
+    #        for port in list_ports.comports():
+    #            l.append(port[0])
+    #    return l
+
+    def _test_com_fired(self):
+        ser = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
+        logger.info('%s', ser)
+        ser.flushInput()
+        count = ser.write('C')
+        #ser.writelines(['50'])
+        #self.actual_temp = int(ser.readline()[:-2])
+        result = ser.readlines(10)
+        for r in result:
+            if r.find('OK') is 0:
+                logger.info('Connection OK!')
+        #result = ser.read(30)
+        ser.close()
+
+        
+class TestSerial(HasTraits):
+    controller = Instance(serial.Serial)
+    selected_com_port = Str
+    com_ports_list = List(Str)
+
+    test_com = Button
+    traits_view = View(HGroup(Item('selected_com_port',  label = 'Com port', \
+                                editor = EnumEditor(name='com_ports_list'), \
+                                enabled_when='not running'), Item('test_com', enabled_when = 'selected_com_port != \'\'')))
+
+    def _test_com_fired(self):
+        ser = serial.Serial(self.selected_com_port, 115200, timeout=1)
+        logger.info('%s', ser)
+        #ser.flushOutput()
+        #ser.flushInput()
+
+
+        #ser.writelines(['50'])
+        #self.actual_temp = int(ser.readline()[:-2])
+        #while ser.inWaiting() > 0:
+        #    ser.read(1)
+        #logger.info('buffer %d', ser.inWaiting())
+
+        #result = ser.readlines(30)
+        #logger.info('result %s, buffer %d, count %d', result, ser.inWaiting(), count)
+        lines = []
+        while True:
+            line = ser.readline()
+            lines.append(line.decode('utf-8').rstrip())
+    
+            # wait for new data after each line
+            timeout = time.time() + 0.1
+            while not ser.inWaiting() and timeout > time.time():
+                pass
+            if not ser.inWaiting():
+                break 
+        logger.info('lines1 %s', lines)
+        count = ser.write('C')        
+        lines = []
+        while True:
+            line = ser.readline()
+            lines.append(line.decode('utf-8').rstrip())
+    
+            # wait for new data after each line
+            timeout = time.time() + 0.1
+            while not ser.inWaiting() and timeout > time.time():
+                pass
+            if not ser.inWaiting():
+                break 
+        logger.info('lines2 %s', lines)
+        for r in lines:
+            if r.find('OK') is 0:
+                logger.info('Connection OK!')
+        #result = ser.read(30)
+        ser.close()
+        
+    def _com_ports_list_default(self):
+        l = []
+        if os.name == 'nt':
+            # windows
+            for i in range(256):
+                try:
+                    s = serial.Serial(i)
+                    s.close()
+                    l.append('COM' + str(i + 1))
+                except serial.SerialException:
+                    pass
+        else:
+            # unix
+            for port in list_ports.comports():
+                l.append(port[0])
+        return l
 
 if __name__ == '__main__':
     l = logging.getLogger()
     console = logging.StreamHandler()
+    l.handlers = []
     l.addHandler(console)
     l.setLevel(logging.DEBUG)
     l.info('test')
-    g=TemperatureControlPanel()
+    #g=TemperatureControlPanel()
+    #g.configure_traits()
+    g=TestSerial()
     g.configure_traits()

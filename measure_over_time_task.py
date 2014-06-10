@@ -106,7 +106,7 @@ class MeasureOverTimeTask(Task):
         try:
             from instruments.blank import Blank
         except ImportError:
-            pass 
+            pass
         else:
             instruments.append(Blank())
 
@@ -116,7 +116,7 @@ class MeasureOverTimeTask(Task):
             pass
         else:
             instruments.append(DummySourcemeterTime())
-        
+
         try:
             from instruments.sourcemeter import SourceMeter
         except ImportError:
@@ -148,7 +148,7 @@ class MeasureOverTimeTask(Task):
         #    pass
         else:
             instruments.append(Boonton7200())
-            
+
         try:
             from instruments.time_agilent_4284 import Agilent4284
         except ImportError:
@@ -170,12 +170,12 @@ class MeasureOverTimeTask(Task):
         self.data_subscribers.append(self.gpio_panel)
         self.data_subscribers.append(self.plot_panel)
         self.data_suppliers.append(self.gasmixer_panel)
-        self.data_suppliers.append(self.temperature_control_panel)        
+        self.data_suppliers.append(self.temperature_control_panel)
         self.start_stop_subscribers.append(self.sql_panel)
         self.start_stop_subscribers.append(self.gasmixer_panel)
         self.start_stop_subscribers.append(self.gpio_panel)
         self.start_stop_subscribers.append(self.plot_panel)
-        self.start_stop_subscribers.append(self.temperature_control_panel) 
+        self.start_stop_subscribers.append(self.temperature_control_panel)
         return [self.sql_panel,
                 self.gasmixer_panel,
                 self.gpio_panel,
@@ -208,8 +208,8 @@ class MeasureOverTimeTask(Task):
                 self.data_units.append(self.active_instrument.output_channels[i] + x_unit)
             for y_unit in self.active_instrument.y_units.values():
                 self.data_units.append(self.active_instrument.output_channels[i] + y_unit)
-        self.data_units.append(self.gasmixer_panel.output_channels[0] + \
-        self.gasmixer_panel.y_units.values()[0])
+        for supplier in self.data_suppliers:
+            self.data_units.append(supplier.output_channels[0] + supplier.y_units[0])
         self.sql_panel.set_column_names(self.data_units)
 
     @on_trait_change('active_instrument.start_stop')

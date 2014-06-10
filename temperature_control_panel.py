@@ -110,6 +110,7 @@ class TemperatureControlPanel(HasTraits):
     pane_name = Str('Temperature control ')
     pane_id = Str('sensorscience.unimeas.temperatur_control_pane')
     output_channels = Dict({0:'temp_controller'})
+    y_units = Dict({0 : 'temp'})
     enable = Bool(False)
     timer = Instance(Timer)
 
@@ -212,7 +213,7 @@ class TemperatureControlPanel(HasTraits):
 
         else:
             if not self.running:
-                return           
+                return
             #logger.info('Stopping')
             #if self.controller is not None:
             #    self.controller.close()
@@ -225,12 +226,12 @@ class TemperatureControlPanel(HasTraits):
                     self.serial_handler.join(0.4)
                     logger.info('Waiting for serial_handler')
         self.running = running
-        
+
     def add_data(self, data):
         pass
-    
+
     def get_data(self):
-        return ('temp', self.actual_temp)
+        return ({'time': 0}, {'temp': self.actual_temp})
 
     def calculate_temperature_table(self):
         self.temperature_table = []

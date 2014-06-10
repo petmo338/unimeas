@@ -178,6 +178,9 @@ class GasMixerPanel(HasTraits):
                 self.syncclient.send('START')
                 self.state = State.STARTING
 
+    def get_data(self):
+        return self.current_column
+
 if __name__ == '__main__':
     l = logging.getLogger()
     console = logging.StreamHandler()

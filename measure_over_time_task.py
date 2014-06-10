@@ -9,6 +9,7 @@ from sql_panel import SQLPanel
 from gasmixer_panel import GasMixerPanel
 from gpio_panel import GPIOPanel
 from plot_panel import PlotPanel
+from temperature_control_panel import TemperatureControlPanel
 from instrument_show_group import InstrumentShowGroup
 #import pdb
 import logging
@@ -40,14 +41,15 @@ class MeasureOverTimeTask(Task):
     gasmixer_panel = Instance(GasMixerPanel)
     gpio_panel = Instance(GPIOPanel)
     plot_panel = Instance(PlotPanel)
+    temperature_control_panel = Instance(TemperatureControlPanel)
     pane = Instance(EmptyCentralPane)
-
     instruments = List
     panels = List
     data_units = List
 
     start_stop_subscribers = List
     data_subscribers = List
+    data_suppliers = List
 
     ###########################################################################
     # 'Task' interface.
@@ -77,10 +79,12 @@ class MeasureOverTimeTask(Task):
                  GenericPane(panel=self.panels[3],
                                 id = self.panels[3].pane_id,
                                 name = self.panels[3].pane_name),
-                 ]
+                GenericPane(panel=self.panels[4],
+                                id = self.panels[4].pane_id,
+                                name = self.panels[4].pane_name),                 ]
 
     def activated(self):
-        self._update_active_instrument()
+        self._update_active_instrument(None, None, None, None)
 
     def set_active_instrument(self, instrument):
         self.active_instrument = instrument
@@ -102,7 +106,7 @@ class MeasureOverTimeTask(Task):
         try:
             from instruments.blank import Blank
         except ImportError:
-            pass
+            pass 
         else:
             instruments.append(Blank())
 
@@ -117,8 +121,8 @@ class MeasureOverTimeTask(Task):
             from instruments.sourcemeter import SourceMeter
         except ImportError:
             pass
-        except WindowsError:
-            pass
+        #except WindowsError:
+        #    pass
         else:
             instruments.append(SourceMeter())
 
@@ -140,8 +144,8 @@ class MeasureOverTimeTask(Task):
             from instruments.time_boonton7200 import Boonton7200
         except ImportError:
             pass
-        except WindowsError:
-            pass
+        #except WindowsError:
+        #    pass
         else:
             instruments.append(Boonton7200())
             
@@ -149,8 +153,8 @@ class MeasureOverTimeTask(Task):
             from instruments.time_agilent_4284 import Agilent4284
         except ImportError:
             pass
-        except WindowsError:
-            pass
+        #except WindowsError:
+        #    pass
         else:
             instruments.append(Agilent4284())
 
@@ -161,22 +165,32 @@ class MeasureOverTimeTask(Task):
         self.gasmixer_panel = GasMixerPanel()
         self.gpio_panel = GPIOPanel()
         self.plot_panel = PlotPanel()
+        self.temperature_control_panel = TemperatureControlPanel()
         self.data_subscribers.append(self.sql_panel)
         self.data_subscribers.append(self.gpio_panel)
         self.data_subscribers.append(self.plot_panel)
+        self.data_suppliers.append(self.gasmixer_panel)
+        self.data_suppliers.append(self.temperature_control_panel)        
         self.start_stop_subscribers.append(self.sql_panel)
         self.start_stop_subscribers.append(self.gasmixer_panel)
         self.start_stop_subscribers.append(self.gpio_panel)
         self.start_stop_subscribers.append(self.plot_panel)
+        self.start_stop_subscribers.append(self.temperature_control_panel) 
         return [self.sql_panel,
                 self.gasmixer_panel,
                 self.gpio_panel,
-                self.plot_panel]
+                self.plot_panel,
+                self.temperature_control_panel]
 
     #### Trait change handlers ################################################
 
     @on_trait_change('active_instrument')
-    def _update_active_instrument(self):
+    def _update_active_instrument(self, obj, name, old, new):
+        #try:
+        #    self.data_suppliers.remove(old)
+        #except ValueError:
+        #    pass
+        #self.data_suppliers.append(new)
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.on_trait_change(self.plot_panel.update_visible_plots, 'active_instrument.enabled_channels[]')
@@ -207,6 +221,8 @@ class MeasureOverTimeTask(Task):
     def _dispatch_data(self):
         while len(self.active_instrument.acquired_data) > 0:
             data = self.active_instrument.acquired_data.pop(0).copy()
-            data['gasmixer'] = self.gasmixer_panel.current_column
+            for supplier in self.data_suppliers:
+                data[supplier.output_channels[0]] = supplier.get_data()
+#            data['gasmixer'] = self.gasmixer_panel.current_column
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)

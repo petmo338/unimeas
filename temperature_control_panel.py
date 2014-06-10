@@ -1,5 +1,5 @@
 from enthought.traits.api import HasTraits, Bool, Int, List, Float, Instance, Any,\
-    Str, Button
+    Str, Button, Dict
 from traitsui.api import Item, View, Group, HGroup, Handler, \
     TableEditor, EnumEditor
 from traitsui.table_column import NumericColumn
@@ -31,7 +31,7 @@ class SerialHandler(threading.Thread):
         except serial.SerialException as e:
             logger.error('Error opening COM port: %s', e)
         logger.info('ser %s', self.ser)
-        time.sleep(1)
+        time.sleep(1.6)
         self.ser.read()
         self.ser.write('C')
         result = self.ser.readline()
@@ -109,6 +109,7 @@ class TemperatureControlPanel(HasTraits):
     BAUD_RATE = 115200
     pane_name = Str('Temperature control ')
     pane_id = Str('sensorscience.unimeas.temperatur_control_pane')
+    output_channels = Dict({0:'temp_controller'})
     enable = Bool(False)
     timer = Instance(Timer)
 
@@ -150,10 +151,12 @@ class TemperatureControlPanel(HasTraits):
     )
 
     def _onTimer(self):
+        self._poll_queue()
+
         self.current_time += (self.UPDATE_INTERVAL / 1000)
         index = int(np.floor(self.current_time))
         if index >= len(self.temperature_table):
-            self.start_stop(False)
+            return
         if self.temperature_table[index] is not self.current_temp:
             self.current_temp = self.temperature_table[index]
         if self.current_row >= len(self.table_entries):
@@ -163,7 +166,7 @@ class TemperatureControlPanel(HasTraits):
         if self.table_entries[self.current_row].remaining < 1:
             self.current_row += 1
             self.row_changed(time_left)
-        self._poll_queue()
+
 
     def _poll_queue(self):
         while not self.get_temp_queue.empty():
@@ -184,8 +187,10 @@ class TemperatureControlPanel(HasTraits):
     def start_stop(self, running):
         if not self.enable:
             return
-        self.running = running
+
         if running:
+            if self.running:
+                return
             #logger.info('Starting')
             self.calculate_temperature_table()
             #self.controller = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
@@ -206,6 +211,8 @@ class TemperatureControlPanel(HasTraits):
             self.timer = Timer(self.UPDATE_INTERVAL, self._onTimer)
 
         else:
+            if not self.running:
+                return           
             #logger.info('Stopping')
             #if self.controller is not None:
             #    self.controller.close()
@@ -217,9 +224,13 @@ class TemperatureControlPanel(HasTraits):
                 while self.serial_handler.isAlive():
                     self.serial_handler.join(0.4)
                     logger.info('Waiting for serial_handler')
-
+        self.running = running
+        
     def add_data(self, data):
         pass
+    
+    def get_data(self):
+        return ('temp', self.actual_temp)
 
     def calculate_temperature_table(self):
         self.temperature_table = []

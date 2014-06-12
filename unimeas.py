@@ -16,14 +16,14 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 # define a Handler which writes INFO messages or higher to the sys.stderr
 console = logging.StreamHandler()
-console.setLevel(logging.DEBUG)
+console.setLevel(logging.INFO)
 # set a format which is simpler for console use
 formatter = logging.Formatter('%(asctime)-2s %(name)-12s: %(levelname)-8s %(message)s')
 # tell the handler to use this format
 console.setFormatter(formatter)
 # add the handler to the root logger
 logging.getLogger('').addHandler(console)
-                    
+
 
 def main(argv):
     """ Run the application.
@@ -39,7 +39,7 @@ def main(argv):
 
 
 if __name__ == '__main__':
-   
+
 #    import sys
     """ Run the application.
     """

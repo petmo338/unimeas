@@ -30,7 +30,7 @@ class SerialHandler(threading.Thread):
             self.ser = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=0.4)
         except serial.SerialException as e:
             logger.error('Error opening COM port: %s', e)
-        logger.info('ser %s', self.ser)
+        logger.debug('ser %s', self.ser)
         time.sleep(1.6)
         self.ser.read()
         self.ser.write('C')
@@ -60,7 +60,7 @@ class SerialHandler(threading.Thread):
             try:
                 self.get_temp_queue.put_nowait(temperature)
             except Queue.Full:
-                logger.info('Queue full')
+                logger.debug('Queue full')
                 pass
             if not self.set_temp_queue.empty():
                 msg = self.set_temp_queue.get()
@@ -180,10 +180,13 @@ class TemperatureControlPanel(HasTraits):
 
 
     def _table_entries_default(self):
-        return [TableEntry(time = 10, start_temp = 50, end_temp = 50, remaining = -1),
-                TableEntry(time = 5, start_temp = 50, end_temp = 150, remaining = -1),
-                TableEntry(time = 10, start_temp = 150, end_temp = 150, remaining = -1),
-                TableEntry(time = 20, start_temp = 150, end_temp = 100, remaining = -1),]
+        return [TableEntry(time = 120, start_temp = 650, end_temp = 650, remaining = -1),
+                TableEntry(time = 1800, start_temp = 650, end_temp = 350, remaining = -1),
+                TableEntry(time = 60, start_temp = 350, end_temp = 350, remaining = -1),
+                TableEntry(time = 1200, start_temp = 350, end_temp = 150, remaining = -1),
+                TableEntry(time = 60, start_temp = 150, end_temp = 150, remaining = -1),
+                TableEntry(time = 750, start_temp = 150, end_temp = 650, remaining = -1),
+                TableEntry(time = 120, start_temp = 650, end_temp = 50, remaining = -1),]
 
     def start_stop(self, running):
         if not self.enable:
@@ -224,7 +227,8 @@ class TemperatureControlPanel(HasTraits):
                 self.serial_handler.exit_flag = True
                 while self.serial_handler.isAlive():
                     self.serial_handler.join(0.4)
-                    logger.info('Waiting for serial_handler')
+                    logger.debug('Waiting for serial_handler')
+                logger.debug('serial_handler stopped')
         self.running = running
 
     def add_data(self, data):
@@ -248,7 +252,7 @@ class TemperatureControlPanel(HasTraits):
 
     def _current_temp_changed(self, new):
         msg = 'S%d' % new
-        logger.info('Send %s to temp controller', msg)
+        logger.debug('Send %s to temp controller', msg)
         self.set_temp_queue.put(msg)
 
 

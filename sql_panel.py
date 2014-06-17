@@ -124,6 +124,7 @@ class SQLWrapper():
             query = 'INSERT INTO ' + str(self.table_name) + ' VALUES (DEFAULT '
             for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]
+
                 for column in candidates:
                     column_index = self.column_names.index(column)
                     try:

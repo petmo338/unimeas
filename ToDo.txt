@@ -6,7 +6,7 @@ Todo!
 * [Done] Cap-meter plugin
 Temprature controller plugin
 
-* Legend show all channels, not just the active ones
+* [Done] Legend show all channels, not just the active ones
 * Enable/disable channels in plot
 
 Add python console pane
@@ -23,3 +23,5 @@ Make personal preset load possibility
 * [Done] OK with Start freq higher than low
 
 *[Skipped, added default path instead] save file - folder icon missing
+
+* Gasmixer connection bug fixes.

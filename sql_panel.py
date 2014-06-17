@@ -6,6 +6,7 @@ from generic_popup_message import GenericPopupMessage
 import csv
 import time
 import logging
+logger = logging.getLogger(__name__)
 
 class CreateMeasurementPopup(Handler):
     measurement_name = Str
@@ -44,7 +45,7 @@ class SQLWrapper():
                 user=self.USER, password=self.PASSWORD, database='postgres')
         except:
             return list()
-
+        self.DBAPI.paramstyle = 'numeric'
         self.cursor = self.conn.cursor()
         self.cursor.execute('SELECT datname FROM pg_database WHERE datistemplate = \
                             false AND datname != \'postgres\' ')
@@ -72,7 +73,7 @@ class SQLWrapper():
         query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
             + self.USER + '\';'
         cursor.execute(query)
-        self.conn.commit()
+        #self.conn.commit()
         result = cursor.fetchall()
         retval = list()
         for table in result:
@@ -80,41 +81,42 @@ class SQLWrapper():
         return retval
 
 
-    def set_table(self, column_names, name, comment = ''):
-        if name[0].isalnum():
+    def set_measurement(self, column_names, name, comment = ''):
+        if name[0].isdigit():
             name = self.TABLE_NAME_PREPEND + name
         self.column_names = column_names
-        self.DBAPI.paramstyle = "numeric"
+
         query = 'SELECT tablename FROM pg_tables where tablename like \'' + name + '\''
         self.cursor.execute(query)
         result = self.cursor.fetchall()
         if result == tuple():
             if not self._create_table(column_names, name):
-                logging.getLogger('sql_wrapper').warning('Unable to create table. \
-                                                        Saving data disabled')
+                logger.warning('Unable to create table. Saving data disabled')
                 self.table_name = ''
                 return False
         else:
-            logging.getLogger('sql_wrapper').warning('Table: %s exists, appending', name)
+            logger.warning('Table: %s exists, appending', name)
         self.table_name = name
         query   = 'COMMENT on table ' + name + ' is \'' + comment + '\';'
         self.cursor.execute(query)
         return True
 
     def _create_table(self, column_names, name):
-        logging.getLogger('sql_wrapper').info('column_names: %s, name %s', column_names, name)
+        logger.info('column_names: %s, name %s', column_names, name)
         query = 'CREATE TABLE ' + name + ' (uid SERIAL, '
         query = query + ' REAL ,'.join(column_names) + ' REAL)'
-#        logging.getLogger('sql_wrapper').info('query: %s', query)
-# Fixa en try, catch
-        self.cursor.execute(query)
-        self.conn.commit()
+        try:
+            self.cursor.execute(query)
+            #self.conn.commit()
+        except Exception as e:
+            logger.warning('Problems with query %s. Error %s', query, e)
+            return False
         return True
 
 
     def insert_data(self, data):
         if self.table_name == '':
-            logging.getLogger('sql_wrapper').info('No table_name set. Buffering...')
+            logger.info('No table_name set. Buffering...')
         else:
             string_data = []
             for i in xrange(len(self.column_names)):
@@ -136,7 +138,7 @@ class SQLWrapper():
             query = query + ')'
             self.cursor.execute(query)
             self.conn.commit()
-#            logging.getLogger('sql_wrapper').info('query: %s', query)
+#            logger.info('query: %s', query)
 
 
 class SQLPanel(HasTraits):
@@ -177,10 +179,12 @@ class SQLPanel(HasTraits):
         popup = CreateMeasurementPopup()
         ui = popup.edit_traits()
         if ui.result is True:
-            self.available_measurements.append(popup.measurement_name)
-            self.measurement_name = popup.measurement_name
+            result = popup.measurement_name
+            if result[0].isdigit():
+                result = 'm' + result
+            self.available_measurements.append(result)
+            self.measurement_name = self.available_measurements[-1]
             self.measurement_description = popup.measurement_description
-
 
     def _available_users_default(self):
         return []
@@ -195,7 +199,7 @@ class SQLPanel(HasTraits):
         else:
             self.save_in_database = True
             if not self.database_wrapper.change_database(new):
-                logging.getLogger('sql_panel').error('Unable to connect to database %s', new)
+                logger.error('Unable to connect to database %s', new)
                 self.save_in_database = False
                 self.available_measurements = []
                 return
@@ -246,14 +250,14 @@ class SQLPanel(HasTraits):
                 GenericPopupMessage(message = 'No measurement selected').edit_traits()
                 self.save_in_database = False
             else:
-                self.database_wrapper.set_table(self.column_names, self.measurement_name,
+                self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
                     self.measurement_description)
 
         if running and self.save_to_file:
             try:
                 filehandle = open(self.filename, "a", 1)
             except IOError:
-                self.logger.error('Unable to open file %s', self.filename)
+                logger.error('Unable to open file %s', self.filename)
             self.csv_writer = csv.writer(filehandle, dialect=csv.excel_tab)
             self.csv_writer.writerow(self.column_names)
             self.column_names = self.column_names

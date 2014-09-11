@@ -1,5 +1,5 @@
 from traits.api import Unicode, Dict, Int, Event, Bool, List,\
-    HasTraits, Str, Button, Float,  Instance, on_trait_change
+    HasTraits, Str, Button, Float,  Instance, on_trait_change, Any
 
 from traitsui.api import Group, HGroup, Item, View, Handler, \
     ButtonEditor, EnumEditor
@@ -7,7 +7,7 @@ from traitsui.api import Group, HGroup, Item, View, Handler, \
 #traits.has_traits.CHECK_INTERFACES = 2
 from i_instrument import IInstrument
 import logging
-from pyvisa import visa
+import visa
 from time import sleep, time
 from threading import Thread
 import Queue
@@ -65,7 +65,8 @@ class SourceMeter(HasTraits):
     smua2_enabled = Bool(False)
     smua3_enabled = Bool(False)
     enabled_channels = List(Bool)
-    instrument = Instance(visa.Instrument)
+    visa_resource = Instance(visa.ResourceManager, ())
+    instrument = Any
     acquisition_thread = Instance(AcquisitionThread)
     selected_device = Str
     identify_button = Button('Identify')
@@ -129,21 +130,22 @@ class SourceMeter(HasTraits):
 
     def __available_devices_map_default(self):
         try:
-            instruments = visa.get_instruments_list()
+            instruments = self.visa_resource.list_resources()
+
         except visa.VisaIOError:
             return {}
 
         d = dict()
         candidates = [n for n in instruments if n.startswith('GPIB')]
         for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
+            temp_inst = visa.get_instrument(instrument)
             model = temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model[:ID_STRING_LENGTH]
 
         candidates = [n for n in instruments if n.startswith('USB') and n.find('0x26') > 0]
         for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
+            temp_inst = visa.get_instrument(instrument)
             model = temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model[:ID_STRING_LENGTH]
@@ -151,7 +153,7 @@ class SourceMeter(HasTraits):
         candidates = [n for n in instruments if n.startswith('k-26')]
         for instrument in candidates:
             try:
-                temp_inst = visa.instrument(instrument)
+                temp_inst = visa.get_instrument(instrument)
             except  visa.VisaIOError:
                 pass
             temp_inst.ask('*IDN?')
@@ -160,7 +162,7 @@ class SourceMeter(HasTraits):
 
         candidates = [n for n in instruments if n.lower().startswith('sourcemeter')]
         for instrument in candidates:
-            temp_inst = visa.instrument(instrument, timeout = 1)
+            temp_inst = visa.get_instrument(instrument, timeout = 1)
             temp_inst.term_chars = '\n'
             model = temp_inst.ask('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
@@ -168,7 +170,7 @@ class SourceMeter(HasTraits):
         return d
 
     def _selected_device_changed(self, new):
-        self.instrument = visa.Instrument(new, timeout = 2)
+        self.instrument = visa.get_nstrument(new, timeout = 2)
         self.instrument.write('reset()')
 
     def _selected_device_default(self):
@@ -267,7 +269,7 @@ class SourceMeter(HasTraits):
         #d[self.output_channels[1]] = (dict({}), dict({}))
         #d[self.output_channels[2]] = (dict({}), dict({}))
         #d[self.output_channels[3]] = (dict({}), dict({}))
-        
+
         self.acquired_data.append(d)
 
     @on_trait_change('constant_current_mode, constant_voltage_mode')

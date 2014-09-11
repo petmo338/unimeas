@@ -1,6 +1,8 @@
 # Specifics #
 ###################
 PyDAQmx
+pyvisa
+pg8000
 
 # Compiled source #
 ###################

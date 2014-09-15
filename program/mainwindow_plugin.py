@@ -35,7 +35,7 @@ class MainWindowPlugin(Plugin):
     ###########################################################################
 
     def _preferences_default(self):
-        filename = os.path.join(os.path.dirname(__file__), 'preferences.ini')
+        filename = os.path.join(os.getcwd(), 'preferences.ini')
         return [ 'file://' + filename ]
 
     def _preferences_panes_default(self):

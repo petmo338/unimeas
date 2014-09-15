@@ -23,7 +23,7 @@ formatter = logging.Formatter('%(asctime)-2s %(name)-12s: %(levelname)-8s %(mess
 console.setFormatter(formatter)
 # add the handler to the root logger
 logging.getLogger('').addHandler(console)
-
+app = None
 
 def main(argv):
     """ Run the application.

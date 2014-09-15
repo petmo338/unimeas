@@ -174,14 +174,17 @@ class NI6215_MOSLab(HasTraits):
         serial = c_uint32(0)
         devices=[]
         for d in devs:
-            PyDAQmx.DAQmxGetDevProductType(d, s, len(s))
-            (a,b,c) = s.partition('\x00')
-            if a.startswith('USB-62'):
-                PyDAQmx.DAQmxGetDevSerialNum(d, serial)
-                devices.append((d, a + ' - ' + hex(serial.value)[2:-1].upper()))
-            if a.startswith('PCI-'):
-                PyDAQmx.DAQmxGetDevSerialNum(d, serial)
-                devices.append((d, a + ' - In computer'))
+            if len(d) > 0:
+                PyDAQmx.DAQmxGetDevProductType(d, s, len(s))
+                (a,b,c) = s.partition('\x00')
+                if a.startswith('USB-62'):
+                    PyDAQmx.DAQmxGetDevSerialNum(d, serial)
+                    devices.append((d, a + ' - ' + hex(serial.value)[2:-1].upper()))
+                if a.startswith('PCI-'):
+                    PyDAQmx.DAQmxGetDevSerialNum(d, serial)
+                    devices.append((d, a + ' - In computer'))
+            else:
+                break
         retval = dict((device[0], device[1]) for device in devices)
         logger.info('_available_devices_map_default %s', retval)
         return retval

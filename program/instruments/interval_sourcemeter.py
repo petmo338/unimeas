@@ -2,14 +2,14 @@ from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
     List, Unicode, Str, Int, Event, Bool, Enum, Button
 from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
-import traits.has_traits
-#traits.has_traits.CHECK_INTERFACES = 2
+
 from pyface.timer.api import Timer
-from pyvisa import visa
+import visa
 from time import sleep
 import logging
-
+visa.logger.level=logging.ERROR
 logger = logging.getLogger(__name__)
+
 
 DEFAULT_START_VOLTAGE = 0
 DEFAULT_STOP_VOLTAGE = 5
@@ -56,7 +56,8 @@ class SourceMeter(HasTraits):
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
     identify_button = Button('Identify')
-    instrument = Instance(visa.Instrument)
+    visa_resource = Instance(visa.ResourceManager, ())
+    instrument = Instance(visa.Resource)
 
     traits_view = View(Group(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
@@ -150,15 +151,15 @@ class SourceMeter(HasTraits):
         self.timer.Stop()
         self.timer_dormant = True
         d = dict()
-        values = self.instrument.ask_for_values('print(smua.measure.iv())')
+        values = self.instrument.query_ascii_values('print(smua.measure.iv())')
         self.current_voltage = values[1]
         self.current_current = values[0]
-        values = self.instrument.ask_for_values('print(status.measurement.reading_overflow.condition)')
+        values = self.instrument.query_ascii_values('print(status.measurement.reading_overflow.condition)')
         if values[0] == 2:
             self.reading_overflow = True
         else:
             self.reading_overflow = False
-        values = self.instrument.ask_for_values('print(status.measurement.current_limit.condition)')
+        values = self.instrument.query_ascii_values('print(status.measurement.current_limit.condition)')
         if values[0] == 2:
             self.current_limit_exceeded = True
         else:
@@ -190,7 +191,7 @@ class SourceMeter(HasTraits):
 
     def _selected_device_changed(self, new):
         try:
-            self.instrument = visa.Instrument(new, timeout = 2)
+            self.instrument = self.visa_resource.open_resource(new, timeout = 2)
             self.instrument.write('*RST')
         except visa.VisaIOError as e:
             logger.error('Caught exception: %s', e)
@@ -216,40 +217,41 @@ class SourceMeter(HasTraits):
 
     def __available_devices_map_default(self):
         try:
-            instruments = visa.get_instruments_list()
+            instruments = self.visa_resource.list_resources()
         except visa.VisaIOError:
             return {}
 
         d = dict()
         candidates = [n for n in instruments if n.startswith('GPIB')]
         for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
-            model = temp_inst.ask('*IDN?')
+            temp_inst = self.visa_resource.open_resource(instrument)
+            model = temp_inst.query('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model
 
         candidates = [n for n in instruments if n.startswith('USB') and n.find('0x26') > 0]
         for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
-            model = temp_inst.ask('*IDN?')
+            temp_inst = self.visa_resource.open_resource(instrument)
+            model = temp_inst.query('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model
 
         candidates = [n for n in instruments if n.startswith('k-26')]
         for instrument in candidates:
             try:
-                temp_inst = visa.instrument(instrument)
+                temp_inst = self.visa_resource.open_resource(instrument)
             except  visa.VisaIOError:
-                pass
-            model = 'asd'#temp_inst.ask('*IDN?')
+                model = ''
+            else:
+                model = temp_inst.query('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model
 
         candidates = [n for n in instruments if n.lower().startswith('sourcemeter')]
         for instrument in candidates:
-            temp_inst = visa.instrument(instrument, timeout = 1)
+            temp_inst =self.visa_resource.open_resource(instrument, timeout = 1)
             temp_inst.term_chars = '\n'
-            model = temp_inst.ask('*IDN?')
+            model = temp_inst.query('*IDN?')
             if model.find('Keithley') == 0 and model.find('26') > 0:
                 d[instrument] = model
         return d

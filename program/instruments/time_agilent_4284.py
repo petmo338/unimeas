@@ -1,20 +1,22 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, Unicode, Str, Int, on_trait_change,\
+    List, Unicode, Str, Int, on_trait_change, \
    Event, Bool, Enum
 from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, TableEditor
-import traits.has_traits
-#traits.has_traits.CHECK_INTERFACES = 2
+
 from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
-from pyvisa import visa
+from ..generic_popup_message import GenericPopupMessage
+import visa
+from serial_util import SerialUtil
 from time import time
 import logging
-
+visa.logger.level=logging.ERROR
 logger = logging.getLogger(__name__)
 
-DEFAULT_FREQUENCY = int(10000)
 
+DEFAULT_FREQUENCY = int(10000)
+INSTRUMENT_IDENTIFIER = ['HEWLETT', '4284A']
 class ViewHandler(Handler):
     def closed(self, info, is_ok):
 #        logger.debug('Closing')
@@ -86,7 +88,10 @@ class Agilent4284(HasTraits):
 
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
-    instrument = Instance(visa.Instrument)
+    visa_resource = Instance(visa.ResourceManager, ())
+    instrument = Instance(visa.Resource)
+
+#    instrument = Instance(visa.Instrument)
 
     traits_view = View(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
@@ -136,37 +141,15 @@ class Agilent4284(HasTraits):
         self.timer_dormant = False
         self.instrument_stop()
 
-#    def _generate_output_list(self):
-#        self.output_list = []
-#        if self.measurement_mode is 0:
-#            if self.valid_stop_frequency > self.valid_start_frequency:
-#                self.output_list = self.available_frequencies[self.available_frequencies.index(self.valid_start_frequency):
-#                                                                self.available_frequencies.index(self.valid_stop_frequency) + 1]
-#            else:
-#                self.output_list = self.available_frequencies[self.available_frequencies.index(self.valid_stop_frequency):
-#                                                                self.available_frequencies.index(self.valid_start_frequency) + 1]
-#                self.output_list.reverse()
-#
-#        elif self.measurement_mode is 1:
-#            diff = self.stop_bias - self.start_bias
-#            if diff > 0:
-#                for i in xrange(int((diff) / self.step_bias) + 1):
-#                    self.output_list.append(self.start_bias + self.step_bias * i)
-#            elif diff < 0:
-#                for i in xrange(int(abs(diff) / self.step_bias) + 1):
-#                    self.output_list.append(self.start_bias - abs(self.step_bias) * i)
-#            else:
-#                self.output_list.append(self.start_bias)
-##        logger.info('output_list %s', self.output_list)
 
     def _onTimer(self):
 #        self.timer.Stop()
         self.timer_dormant = True
         d = dict()
-        values = self.instrument.ask_for_values('FETC:IMP?')
-        self.current_bias = float(self.instrument.ask('BIAS:VOLT?'))
+        values = self.instrument.query_ascii_values('FETC:IMP?')
+        self.current_bias = float(self.instrument.query('BIAS:VOLT?'))
 
-        self.current_frequency = float(self.instrument.ask('FREQ?'))
+        self.current_frequency = float(self.instrument.query('FREQ?'))
         self.current_capacitance =  values[0]
         d[self.output_channels[0]] = (dict({self.x_units[0] : self.sample_nr,
                                             self.x_units[1] : time() - self.start_time}),
@@ -174,18 +157,9 @@ class Agilent4284(HasTraits):
                                             self.y_units[1] : self.current_frequency,
                                             self.y_units[2] : self.current_bias}))
         self.sample_nr += 1
-#        self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
         self.acquired_data.append(d)
-        #try:
-        #    command = ''
-        #    if self.measurement_mode is 0:
-        #        command = 'FREQ ' + str(self.output_list[self.sample_nr])
-        #    elif self.measurement_mode is 1:
-        #        command = 'BIAS:VOLT ' + str(self.output_list[self.sample_nr])
-        #    self.instrument.write(command)
-        #except IndexError:
-        #    self.start_stop = True
+
 
     def _start_stop_fired(self):
         if self.instrument is None:
@@ -216,41 +190,32 @@ class Agilent4284(HasTraits):
                 self.valid_start_frequency = self.available_frequencies[index]
             elif name == 'stop_frequency':
                 self.valid_stop_frequency = self.available_frequencies[index]
-#
 
-#    def _stop_frequency_changed(self, new):
-#
-#        try:
-#            index = self.available_frequencies.index(new)
-#        except ValueError:
-#            index = len(self.available_frequencies) - 1
-#            while new <= self.available_frequencies[index]:
-#                index -= 1
-#        finally:
-#            logger.info('Index: %s', index)
-#            self.valid_stop_frequency = int(self.available_frequencies[index])
-#
     def _selected_device_changed(self, new):
-        self.instrument = visa.Instrument(new, timeout = 2)
-        self.instrument.write('*RST')
+        logger.info('New instrument %s', new)
+        if self.instrument is not None:
+            self.instrument.close()
+        if new is not '':
+            self.instrument = SerialUtil.open(new, self.visa_resource)
+            if self.instrument is None:
+                popup = GenericPopupMessage()
+                popup.message = 'Error opening ' + new
+                popup.configure_traits()
+                self.instrument = None
+                self.selected_device = ''
 
     def _enabled_channels_default(self):
         return [True]
 
     def __available_devices_map_default(self):
         try:
-            instruments = visa.get_instruments_list()
+            instruments_info = self.visa_resource.list_resources_info()
         except visa.VisaIOError:
             return {}
 
-        d = dict()
-        candidates = [n for n in instruments if n.startswith('GPIB')]
-        for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
-            model = temp_inst.ask('*IDN?')
-            if model.find('HEWLETT') == 0 and model.find('4284A') > 0:
-                d[instrument] = model
-
+        d = {}
+        candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
         return d
 
     def _selected_device_default(self):
@@ -305,6 +270,8 @@ class Agilent4284(HasTraits):
 
 
 if __name__ == '__main__':
+    if __package__  is None:
+        __package__ = "instruments"
     l = logging.getLogger()
     console = logging.StreamHandler()
     l.addHandler(console)

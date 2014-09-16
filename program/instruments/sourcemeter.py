@@ -3,43 +3,28 @@ from traits.api import Unicode, Dict, Int, Event, Bool, List,\
 
 from traitsui.api import Group, HGroup, Item, View, Handler, \
     ButtonEditor, EnumEditor
-#import traits.has_traits
-#traits.has_traits.CHECK_INTERFACES = 2
+
 from i_instrument import IInstrument
 import logging
-from pyvisa import visa
+import visa
 from time import sleep, time
-from threading import Thread
-import Queue
+#from threading import Thread
+from ..generic_popup_message import GenericPopupMessage
+
+from serial_util import SerialUtil
+from pyface.timer.api import Timer
+
 ID_STRING_LENGTH = 30
-class AcquisitionThread(Thread, HasTraits):
-    wants_abort = Bool(False)
-    sample_number = Int(0)
-
-    def __init__(self, queue, instrument, sampling_interval):
-        super(AcquisitionThread, self).__init__()
-        self.queue = queue
-        self.instrument = instrument
-        self.sampling_interval = sampling_interval
-
-    def run(self):
-        start_time = time()
-        while not self.wants_abort:
-            sleep(self.sampling_interval)
-            self.sample_number += 1
-            retval = [self.sample_number, time() - start_time]
-            values = self.instrument.ask_for_values('print(smua.measure.iv())')
-            retval.append(values[1])
-            retval.append(values[0])
-            retval.append(values[1]/values[0])
-            self.queue.put(retval)
+INSTRUMENT_IDENTIFIER = ['Keithley', '26']
+visa.logger.level=logging.ERROR
+logger = logging.getLogger(__name__)
 
 class SourceMeterHandler(Handler):
     def closed(self, info, is_ok):
         """ Handles a dialog-based user interface being closed by the user.
         Overridden here to stop the timer once the window is destroyed.
         """
-        logging.getLogger(__name__).info('SourcemeterHandler.closed()')
+        logger.info('SourcemeterHandler.closed()')
         info.object.stop()
 
 #@provides(IInstrument)
@@ -65,8 +50,9 @@ class SourceMeter(HasTraits):
     smua2_enabled = Bool(False)
     smua3_enabled = Bool(False)
     enabled_channels = List(Bool)
-    instrument = Instance(visa.Instrument)
-    acquisition_thread = Instance(AcquisitionThread)
+    visa_resource = Instance(visa.ResourceManager, ())
+    instrument = Instance(visa.Resource)
+
     selected_device = Str
     identify_button = Button('Identify')
     constant_current_mode = Bool(True)
@@ -85,18 +71,19 @@ class SourceMeter(HasTraits):
     current_range = Str('Auto')
     voltage_range = Str('Auto')
     sampling_interval = Float(1.0)
-
+    sample_number = Int
     button_label = Str('Start')
     _available_devices_map = Dict(Unicode, Unicode)
     running = Bool(False)
-    queue = Instance(Queue.Queue)
+    timer = Instance(Timer)
+
 
     measurement_settings_group = Group(HGroup(Item('constant_current_mode', show_label = False), \
                                             Item('current', label = 'Current [mA]'), \
-                                            Item('voltage_limit', label = 'Voltage limit [V]')), \
+                                            Item('voltage_limit', label = 'Voltage limit [V]'), enabled_when = 'not running'), \
                                         HGroup(Item('constant_voltage_mode', show_label = False), \
                                             Item('voltage', label = 'Voltage [V]'), \
-                                            Item('current_limit', label = 'Current limit [mA]')), \
+                                            Item('current_limit', label = 'Current limit [mA]'), enabled_when = 'not running'), \
                                             show_border = True, label = 'Setup')
 
     instrument_settings_group = Group(HGroup(Item('current_range', \
@@ -122,54 +109,40 @@ class SourceMeter(HasTraits):
                             editor = ButtonEditor(label_value='button_label'),
                             enabled_when = 'selected_device != \'\''),\
                         handler = SourceMeterHandler)
-    def __init__(self, **traits):
-        super(SourceMeter, self).__init__(**traits)
-        self.logger = logging.getLogger(__name__)
-        self.on_trait_change(self.add_data, 'acquisition_thread.sample_number')
 
     def __available_devices_map_default(self):
         try:
-            instruments = visa.get_instruments_list()
+            instruments_info = self.visa_resource.list_resources_info()
         except visa.VisaIOError:
             return {}
 
-        d = dict()
-        candidates = [n for n in instruments if n.startswith('GPIB')]
-        for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
-            model = temp_inst.ask('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model[:ID_STRING_LENGTH]
+        d = {}
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('GPIB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments if n.startswith('USB') and n.find('0x26') > 0]
-        for instrument in candidates:
-            temp_inst = visa.instrument(instrument)
-            model = temp_inst.ask('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model[:ID_STRING_LENGTH]
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('USB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments if n.startswith('k-26')]
-        for instrument in candidates:
-            try:
-                temp_inst = visa.instrument(instrument)
-            except  visa.VisaIOError:
-                pass
-            temp_inst.ask('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model[:ID_STRING_LENGTH]
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('k-26')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments if n.lower().startswith('sourcemeter')]
-        for instrument in candidates:
-            temp_inst = visa.instrument(instrument, timeout = 1)
-            temp_inst.term_chars = '\n'
-            model = temp_inst.ask('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model[:ID_STRING_LENGTH]
+        candidates = [n for n in instruments_info.values() if n.alias.lower().startswith('sourcemeter')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
+
         return d
 
     def _selected_device_changed(self, new):
-        self.instrument = visa.Instrument(new, timeout = 2)
-        self.instrument.write('reset()')
+        logger.info('New instrument %s', new)
+        if self.instrument is not None:
+            self.instrument.close()
+        if new is not '':
+            self.instrument = SerialUtil.open(new, self.visa_resource)
+            if self.instrument is None:
+                popup = GenericPopupMessage()
+                popup.message = 'Error opening ' + new
+                popup.configure_traits()
+                self.instrument = None
+                self.selected_device = ''
 
     def _selected_device_default(self):
         try:
@@ -231,32 +204,33 @@ class SourceMeter(HasTraits):
 
         self.instrument.write('smua.source.output = smua.OUTPUT_ON')
         self.running = True
-        self.queue = Queue.Queue()
+        self.start_time = time()
+        self.sample_number = 0
 
-        self.acquisition_thread = AcquisitionThread(self.queue, self.instrument, \
-            self.sampling_interval)
-        self.acquisition_thread.start()
+        if self.timer is None:
+            self.timer = Timer(self.sampling_interval * 1000, self._onTimer)
+        else:
+            self.timer.Start(self.sampling_interval * 1000)
 
     def stop(self):
-        if isinstance(self.acquisition_thread, AcquisitionThread):
-            logging.getLogger(__name__).info('Sourcemeter stop')
-            self.acquisition_thread.wants_abort = True
-            while self.acquisition_thread.isAlive():
-                sleep(0.1)
+        if self.timer is not None:
+            self.timer.Stop()
 
-        if type(self.instrument) == visa.Instrument:
+        if self.instrument is not None:
             self.instrument.write('smua.source.output = smua.OUTPUT_OFF')
         self.running = False
 
 
-    def add_data(self):
-        if self.acquisition_thread.sample_number is 0:
-            return
-
-        while self.queue.empty() is False:
-            item = self.queue.get()
-            self.queue.task_done()
-            self.dispatch_data(item)
+    def _onTimer(self):
+        self.sample_number += 1
+        data = [self.sample_number, time() - self.start_time]
+        values = self.instrument.query_ascii_values('print(smua.measure.iv())')
+        data.append(values[1])
+        data.append(values[0])
+        data.append(values[1]/values[0])
+        self.voltage = values[0]
+        self.current = values[1]
+        self.dispatch_data(data)
 
     def dispatch_data(self, data):
         d = dict()
@@ -267,7 +241,7 @@ class SourceMeter(HasTraits):
         #d[self.output_channels[1]] = (dict({}), dict({}))
         #d[self.output_channels[2]] = (dict({}), dict({}))
         #d[self.output_channels[3]] = (dict({}), dict({}))
-        
+
         self.acquired_data.append(d)
 
     @on_trait_change('constant_current_mode, constant_voltage_mode')

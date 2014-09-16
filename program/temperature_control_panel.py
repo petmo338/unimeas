@@ -86,7 +86,7 @@ table_editor = TableEditor(
     columns = [ NumericColumn( name = 'time', label = 'Seconds', horizontal_alignment = 'right'),
                 NumericColumn( name = 'start_temp', label = 'Start temp'),
                 NumericColumn( name = 'end_temp', label = 'End temp'),
-                NumericColumn( name = 'remaining', editable = False, label = 'Left', width = 70, read_only_cell_color = 0xF4F3EE)],
+                NumericColumn( name = 'remaining', editable = False, label = 'Time left', width = 70, read_only_cell_color = 0xF4F3EE)],
     deletable   = True,
     sort_model  = False,
     auto_size   = True,
@@ -180,11 +180,12 @@ class TemperatureControlPanel(HasTraits):
 
 
     def _table_entries_default(self):
-        return [TableEntry(time = 120, start_temp = 650, end_temp = 650, remaining = -1),
+        return [TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
+                TableEntry(time = 200, start_temp = 650, end_temp = 650, remaining = -1),
                 TableEntry(time = 1800, start_temp = 650, end_temp = 350, remaining = -1),
-                TableEntry(time = 60, start_temp = 350, end_temp = 350, remaining = -1),
+                TableEntry(time = 7300, start_temp = 350, end_temp = 350, remaining = -1),
                 TableEntry(time = 1200, start_temp = 350, end_temp = 150, remaining = -1),
-                TableEntry(time = 60, start_temp = 150, end_temp = 150, remaining = -1),
+                TableEntry(time = 1200, start_temp = 150, end_temp = 150, remaining = -1),
                 TableEntry(time = 750, start_temp = 150, end_temp = 650, remaining = -1),
                 TableEntry(time = 120, start_temp = 650, end_temp = 50, remaining = -1),]
 

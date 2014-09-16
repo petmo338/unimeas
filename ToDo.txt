@@ -23,3 +23,5 @@ Make personal preset load possibility
 * [Done] OK with Start freq higher than low
 
 *[Skipped, added default path instead] save file - folder icon missing
+
+Add rescan for instrument

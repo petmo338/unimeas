@@ -105,22 +105,22 @@ class MeasureOverTimeTask(Task):
         instruments = []
         try:
             from instruments.blank import Blank
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Blank())
 
         try:
             from instruments.dummysourcemetertime import DummySourcemeterTime
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(DummySourcemeterTime())
 
         try:
             from instruments.sourcemeter import SourceMeter
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         #except WindowsError:
         #    pass
         else:
@@ -128,22 +128,22 @@ class MeasureOverTimeTask(Task):
 
         try:
             from instruments.ni6215 import NI6215
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(NI6215())
 
         try:
             from instruments.SB50_moslab import NI6215_MOSLab
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(NI6215_MOSLab())
 
         try:
             from instruments.time_boonton7200 import Boonton7200
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         #except WindowsError:
         #    pass
         else:
@@ -151,8 +151,8 @@ class MeasureOverTimeTask(Task):
 
         try:
             from instruments.time_agilent_4284 import Agilent4284
-        except ImportError:
-            pass
+        except Exception as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
         #except WindowsError:
         #    pass
         else:

@@ -6,34 +6,47 @@ from traitsui.api import View, Item, Group, ButtonEditor, \
 import traits.has_traits
 #traits.has_traits.CHECK_INTERFACES = 2
 from time import time
+from PyDAQmx.DAQmxFunctions import TaskHandle, DAQmxCreateTask, \
+    DAQmxCreateDOChan, DAQmxStartTask, DAQmxStopTask, DAQmxWriteDigitalLines, \
+    DAQmxClearTask
 from PyDAQmx.Task import Task
-from PyDAQmx.DAQmxConstants import DAQmx_Val_RSE, DAQmx_Val_Volts, \
+from PyDAQmx.DAQmxConstants import DAQmx_Val_NRSE, DAQmx_Val_Volts, \
     DAQmx_Val_Rising, DAQmx_Val_ContSamps, DAQmx_Val_Acquired_Into_Buffer, \
-    DAQmx_Val_GroupByScanNumber
+    DAQmx_Val_GroupByScanNumber, DAQmx_Val_ChanForAllLines, DAQmx_Val_GroupByChannel, \
+    DAQmx_Val_RSE
 
-from numpy import zeros
+from numpy import zeros, ones
 import PyDAQmx
-from ctypes import byref, c_int32, c_uint32
+from ctypes import byref, c_int32, c_uint32, c_ubyte, c_int, POINTER, c_double
 
 from i_instrument import IInstrument
+logger = logging.getLogger(__name__)
 
 class CallbackTask(Task, HasTraits):
+    INPUT_CHANNEL = 'ai0'
+    HEATER_CONTROL_CHANNEL = 'port0/Line0:3'
+#    INPUT_TASK_NAME = 'InputTask'
     output = List
     sample_number = Int(0)
+    sample_number_in_cycle = Int(0)
     def __init__(self):
         super(CallbackTask, self).__init__()
-        self.logger = logging.getLogger(__name__ + 'CallbackTask')
 
-    def setup(self, device, channels, sampling_interval):
+    def __del__(self):
+        DAQmxClearTask(self.DOtaskHandle)
+
+    def setup(self, device):
 #        self.ouput = zeros(len(channels))
         self.data = zeros(16)
-        for channel in channels:
-            self.logger.info('Adding %s', device + '/' + channel)
-            self.CreateAIVoltageChan(device + '/' + channel, "", DAQmx_Val_RSE,\
-            -10.0,10.0, DAQmx_Val_Volts, None)
 
-        self.CfgSampClkTiming("", 1/sampling_interval ,DAQmx_Val_Rising, \
-            DAQmx_Val_ContSamps, 1)
+        logger.info('Adding %s', device + '/' + self.INPUT_CHANNEL)
+        self.DOtaskHandle = TaskHandle(0)
+        DAQmxCreateTask("", byref(self.DOtaskHandle))
+        self.CreateAIVoltageChan(device + '/' + self.INPUT_CHANNEL, "", DAQmx_Val_RSE,\
+            -10.0,10.0, DAQmx_Val_Volts, None)
+        DAQmxCreateDOChan(self.DOtaskHandle, device + '/' + self.HEATER_CONTROL_CHANNEL, "", DAQmx_Val_ChanForAllLines)
+
+        self.CfgSampClkTiming("", 1 ,DAQmx_Val_Rising, DAQmx_Val_ContSamps, 1)
         self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, \
             1, 0)
         self.AutoRegisterDoneEvent(0)
@@ -41,20 +54,37 @@ class CallbackTask(Task, HasTraits):
         self.start_time = time()
 
     def EveryNCallback(self):
-        self.sample_number += 1
-        out = []
-        out.append(self.sample_number)
-        out.append(time() - self.start_time)
         read = c_int32()
         self.ReadAnalogF64(1, 10.0, DAQmx_Val_GroupByScanNumber, self.data, \
-            16, byref(read), None)
-        out.extend(self.data.tolist())
-#        self.logger.info('out: %s', out)
-        self.output = out
+                1, byref(read), None)
+#        logger.info('readF64: %s', self.data)
+        if self.sample_number_in_cycle == 0:
+            self.sample_number += 1
+            out = []
+            out.append(self.sample_number)
+            out.append(time() - self.start_time)
+            out.extend(self.data.tolist())
+            self.output = out
+            output = zeros(4, dtype=c_ubyte)
+            DAQmxStartTask(self.DOtaskHandle)
+            DAQmxWriteDigitalLines(self.DOtaskHandle, 1, 1, 10.0, DAQmx_Val_GroupByChannel, output, byref(read), POINTER(c_uint32)())
+            DAQmxStopTask(self.DOtaskHandle)
+#            logger.info('Heater On')
+
+        if self.sample_number_in_cycle == 3:
+            output = ones(4, dtype=c_ubyte)
+            DAQmxStartTask(self.DOtaskHandle)
+            DAQmxWriteDigitalLines(self.DOtaskHandle, 1, 1, 10.0, DAQmx_Val_GroupByChannel, output, byref(read), POINTER(c_uint32)())
+            DAQmxStopTask(self.DOtaskHandle)
+#            logger.info('Heater Off')
+
+        self.sample_number_in_cycle += 1
+        if self.sample_number_in_cycle == 10:
+            self.sample_number_in_cycle = 0
 
 
     def DoneCallback(self, status):
-        self.logger.info("Status", status.value)
+        logger.info("Status", status.value)
         return 0 # The function should return an integer
 
 class NI6215Handler(Handler):
@@ -64,7 +94,7 @@ class NI6215Handler(Handler):
             info.object.acqusition_task.ClearTask()
 
 #@provides(IInstrument)
-class NI6215(HasTraits):
+class NI6215_MOSLab(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
     CHANNEL_CELL_WIDTH = 25.0
 
@@ -72,22 +102,22 @@ class NI6215(HasTraits):
     sampling_interval = Range(0.05, 10, 1)
     start_stop = Event
     refresh_list = Button
-    ai0 =Bool(False)
-    ai1 =Bool(False)
-    ai2 =Bool(False)
-    ai3 =Bool(False)
-    ai4 =Bool(False)
-    ai5 =Bool(False)
-    ai6 =Bool(False)
-    ai7 =Bool(False)
-    ai8 =Bool(False)
-    ai9 =Bool(False)
-    ai10 =Bool(False)
-    ai11 =Bool(False)
-    ai12 =Bool(False)
-    ai13 =Bool(False)
-    ai14 =Bool(False)
-    ai15 =Bool(False)
+    ai0 =Bool(True)
+    #ai1 =Bool(False)
+    #ai2 =Bool(False)
+    #ai3 =Bool(False)
+    #ai4 =Bool(False)
+    #ai5 =Bool(False)
+    #ai6 =Bool(False)
+    #ai7 =Bool(False)
+    #ai8 =Bool(False)
+    #ai9 =Bool(False)
+    #ai10 =Bool(False)
+    #ai11 =Bool(False)
+    #ai12 =Bool(False)
+    #ai13 =Bool(False)
+    #ai14 =Bool(False)
+    #ai15 =Bool(False)
     button_label = Str('Start')
 
     output_unit = 0
@@ -109,33 +139,32 @@ class NI6215(HasTraits):
                             Item('refresh_list')),
                         HGroup(Label('Channels:'), spring, VGroup(HGroup(\
                         Item('ai0', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai1', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai2', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai3', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)), HGroup(\
-                        Item('ai4', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai5', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai6', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai7', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)), HGroup(\
-                        Item('ai8', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai9', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai10', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai11', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)), HGroup(\
-                        Item('ai12', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai13', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai14', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
-                        Item('ai15', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)))),
+                        #Item('ai1', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai2', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai3', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)), HGroup(\
+                        #Item('ai4', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai5', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai6', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai7', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)), HGroup(\
+                        #Item('ai8', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai9', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai10', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai11', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)), HGroup(\
+                        #Item('ai12', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai13', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai14', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
+                        #Item('ai15', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH))\
+                        ))), \
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),\
                                 handler=NI6215Handler)
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
         self.on_trait_change(self.add_data, 'acqusition_task.output')
         self.on_trait_change(self.channel_changed, 'ai+')
-        self.ai0 = self.ai1 = self.ai2 = self.ai3 = True
 
     def _enabled_channels_default(self):
-        return [False] * 16
+        return [self.ai0]
 
     def __available_devices_map_default(self):
         s = str('000000000000000000000000000000000000000000000000000')
@@ -145,16 +174,19 @@ class NI6215(HasTraits):
         serial = c_uint32(0)
         devices=[]
         for d in devs:
-            PyDAQmx.DAQmxGetDevProductType(d, s, len(s))
-            (a,b,c) = s.partition('\x00')
-            if a.startswith('USB-62'):
-                PyDAQmx.DAQmxGetDevSerialNum(d, serial)
-                devices.append((d, a + ' - ' + hex(serial.value)[2:-1].upper()))
-            if a.startswith('PCI-'):
-                PyDAQmx.DAQmxGetDevSerialNum(d, serial)
-                devices.append((d, a + ' - In computer'))
+            if len(d) > 0:
+                PyDAQmx.DAQmxGetDevProductType(d, s, len(s))
+                (a,b,c) = s.partition('\x00')
+                if a.startswith('USB-62'):
+                    PyDAQmx.DAQmxGetDevSerialNum(d, serial)
+                    devices.append((d, a + ' - ' + hex(serial.value)[2:-1].upper()))
+                if a.startswith('PCI-'):
+                    PyDAQmx.DAQmxGetDevSerialNum(d, serial)
+                    devices.append((d, a + ' - In computer'))
+            else:
+                break
         retval = dict((device[0], device[1]) for device in devices)
-        self.logger.info('_available_devices_map_default %s', retval)
+        logger.info('_available_devices_map_default %s', retval)
         return retval
 
     @on_trait_change('_available_devices_map')
@@ -167,7 +199,7 @@ class NI6215(HasTraits):
             device = self._available_devices_map.items()[0][0]
         except IndexError:
             return ''
-        #self._selected_device_changed(device)
+#        self._selected_device_changed(device)
         return device
 
     def _refresh_list_fired(self):
@@ -186,31 +218,26 @@ class NI6215(HasTraits):
         self.acquired_data.append(d)
 
     #### 'IInstrument' interface #############################################
-    name = Unicode('NI-DAQmx')
+    name = Unicode('SB50_MOSLab')
     measurement_info = Dict()
     x_units = Dict({0:'SampleNumber', 1:'Time'})
     y_units = Dict({0: 'Voltage'})
     running = Bool(False)
-    output_channels = Dict({0:'ai00', 1:'ai01', 2:'ai02', 3:'ai03', \
-                            4:'ai04', 5:'ai05', 6:'ai06', 7:'ai07', \
-                            8:'ai08', 9:'ai09', 10:'ai10', 11:'ai11', \
-                            12:'ai12', 13:'ai13', 14:'ai14', 15:'ai15'})
+    output_channels = Dict({0:'ai00'})
     enabled_channels = List(Bool)
 
     def start(self):
         self.running = True
         self.acq_start_time = time()
         self.acqusition_task = CallbackTask()
-        channels = []
-        for i, enabled in enumerate(self.enabled_channels):
-            if enabled:
-               channels.append('ai' + str(i))
-        self.acqusition_task.setup(self.selected_device, \
-            channels, self.sampling_interval)
+        dev_str = self._available_devices_map[self.selected_device]
+        if dev_str.find('USB-6215') >= 0:
+            self.acqusition_task.HEATER_CONTROL_CHANNEL = 'port1/line0:3'
+        self.acqusition_task.setup(self.selected_device)
         self.acqusition_task.StartTask()
 
     def stop(self):
-        self.logger.info('stop()')
+        logger.info('stop()')
         self.running = False
         self.acqusition_task.StopTask()
         self.acqusition_task.ClearTask()
@@ -238,7 +265,7 @@ if __name__ == '__main__':
     l.addHandler(console)
     l.setLevel(logging.DEBUG)
     l.info('test')
-    n = NI6215()
+    n = NI6215_MOSLab()
     n.configure_traits()
 
 #    a = AcquisitionThread()

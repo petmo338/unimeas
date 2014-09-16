@@ -5,6 +5,8 @@ from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, B
 
 from pyface.timer.api import Timer
 import visa
+from serial_util import SerialUtil
+from ..generic_popup_message import GenericPopupMessage
 from time import sleep
 import logging
 visa.logger.level=logging.ERROR
@@ -14,6 +16,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_START_VOLTAGE = 0
 DEFAULT_STOP_VOLTAGE = 5
 DEFAULT_STEP_VOLTAGE = 0.01
+INSTRUMENT_IDENTIFIER = ['Keithley', '26']
 
 class ViewHandler(Handler):
     def closed(self, info, is_ok):
@@ -189,14 +192,6 @@ class SourceMeter(HasTraits):
         else:
             self.start()
 
-    def _selected_device_changed(self, new):
-        try:
-            self.instrument = self.visa_resource.open_resource(new, timeout = 2)
-            self.instrument.write('*RST')
-        except visa.VisaIOError as e:
-            logger.error('Caught exception: %s', e)
-            self.instrument = None
-
     def _selected_device_default(self):
         try:
             device = self._available_devices_map.items()[0][0]
@@ -217,44 +212,37 @@ class SourceMeter(HasTraits):
 
     def __available_devices_map_default(self):
         try:
-            instruments = self.visa_resource.list_resources()
+            instruments_info = self.visa_resource.list_resources_info()
         except visa.VisaIOError:
             return {}
 
-        d = dict()
-        candidates = [n for n in instruments if n.startswith('GPIB')]
-        for instrument in candidates:
-            temp_inst = self.visa_resource.open_resource(instrument)
-            model = temp_inst.query('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+        d = {}
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('GPIB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments if n.startswith('USB') and n.find('0x26') > 0]
-        for instrument in candidates:
-            temp_inst = self.visa_resource.open_resource(instrument)
-            model = temp_inst.query('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('USB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments if n.startswith('k-26')]
-        for instrument in candidates:
-            try:
-                temp_inst = self.visa_resource.open_resource(instrument)
-            except  visa.VisaIOError:
-                model = ''
-            else:
-                model = temp_inst.query('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('k-26')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments if n.lower().startswith('sourcemeter')]
-        for instrument in candidates:
-            temp_inst =self.visa_resource.open_resource(instrument, timeout = 1)
-            temp_inst.term_chars = '\n'
-            model = temp_inst.query('*IDN?')
-            if model.find('Keithley') == 0 and model.find('26') > 0:
-                d[instrument] = model
+        candidates = [n for n in instruments_info.values() if n.alias.lower().startswith('sourcemeter')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
+
         return d
+
+    def _selected_device_changed(self, new):
+        logger.info('New instrument %s', new)
+        if self.instrument is not None:
+            self.instrument.close()
+        if new is not '':
+            self.instrument = SerialUtil.open(new, self.visa_resource)
+            if self.instrument is None:
+                popup = GenericPopupMessage()
+                popup.message = 'Error opening ' + new
+                popup.configure_traits()
+                self.instrument = None
+                self.selected_device = ''
 
     def _start_voltage_default(self):
         return DEFAULT_START_VOLTAGE

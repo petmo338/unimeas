@@ -6,6 +6,7 @@ from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
 from ..generic_popup_message import GenericPopupMessage
 import visa
+from serial_util import SerialUtil
 from time import time
 import logging
 visa.logger.level=logging.ERROR
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_START_FREQUENCY = int(1000)
 DEFAULT_STOP_FREQUENCY = int(1e6)
-
+INSTRUMENT_IDENTIFIER = ['Model', '7200']
 class ViewHandler(Handler):
     def closed(self, info, is_ok):
 #        logger.debug('Closing')
@@ -189,17 +190,13 @@ class Boonton7200(HasTraits):
         if self.instrument is not None:
             self.instrument.close()
         if new is not '':
-            self.instrument = self.visa_resource.open_resource(new)
-        try:
-            self.instrument.write('BI0')
-        except visa.VisaIOError:
-            logger.error('VisaIOError')
-            popup = GenericPopupMessage()
-            popup.message = 'Error opening %s' + new
-            popup.configure_traits()
-            self.instrument = None
-            self.selected_device = ''
-        self.instrument = self.visa_resource.open_resource(new, timeout = 2)
+            self.instrument = SerialUtil.open(new, self.visa_resource, command = 'ID')
+            if self.instrument is None:
+                popup = GenericPopupMessage()
+                popup.message = 'Error opening ' + new
+                popup.configure_traits()
+                self.instrument = None
+                self.selected_device = ''
 
     def _selected_device_default(self):
         try:
@@ -218,25 +215,14 @@ class Boonton7200(HasTraits):
 
     def __available_devices_map_default(self):
         try:
-            instruments = self.visa_resource.list_resources()
+            instruments_info = self.visa_resource.list_resources_info()
         except visa.VisaIOError:
             return {}
-
-        d = dict()
-        candidates = [n for n in instruments if n.startswith('GPIB')]
-        for instrument in candidates:
-            temp_inst = self.visa_resource.open_resource(instrument)
-            temp_inst.timeout = 1
-            try:
-                model = temp_inst.query('ID')
-            except visa.VisaIOError:
-                pass
-            temp_inst.close()
-            if model.find('Model') == 0 and model.find('7200') > 0:
-                d[instrument] = model
-
-
+        d = {}
+        candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER, command = 'ID'))
         return d
+
 
     def _bias_changed(self, new):
         if self.instrument is not None:

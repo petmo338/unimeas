@@ -12,11 +12,10 @@ from unimeas_application import UniMeasApplication
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)-2s %(name)-12s %(levelname)-8s %(message)s',
-                    filename='unimeas.log',
-                    filemode='w')
+                    filename='unimeas.log')
 # define a Handler which writes INFO messages or higher to the sys.stderr
 console = logging.StreamHandler()
-console.setLevel(logging.ERROR)
+console.setLevel(logging.WARNING)
 # set a format which is simpler for console use
 formatter = logging.Formatter('%(asctime)-2s %(name)-12s: %(levelname)-8s %(message)s')
 # tell the handler to use this format

@@ -117,16 +117,16 @@ class SourceMeter(HasTraits):
             return {}
 
         d = {}
-        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('GPIB')]
+        candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('USB')]
+        candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('USB')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
         candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('k-26')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        candidates = [n for n in instruments_info.values() if n.alias.lower().startswith('sourcemeter')]
+        candidates = [n for n in instruments_info.values() if n.alias is not None and n.alias.lower().startswith('sourcemeter')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
         return d

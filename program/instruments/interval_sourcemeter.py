@@ -238,9 +238,7 @@ class SourceMeter(HasTraits):
         if new is not '':
             self.instrument = SerialUtil.open(new, self.visa_resource)
             if self.instrument is None:
-                popup = GenericPopupMessage()
-                popup.message = 'Error opening ' + new
-                popup.configure_traits()
+                GenericPopupMessage(message ='Error opening ' + new).edit_traits()
                 self.instrument = None
                 self.selected_device = ''
 

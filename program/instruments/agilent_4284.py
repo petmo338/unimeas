@@ -29,7 +29,7 @@ class Agilent4284(HasTraits):
 
     name = Unicode('Agilent 4284')
 
-    x_units = Dict({0: 'Frequency', 1: 'Voltage'})
+    x_units = Dict({0: 'Voltage'})
     y_units = Dict({0: 'Capacitance'})
     measurement_info = Dict()
     acquired_data = List(Dict)
@@ -196,14 +196,15 @@ class Agilent4284(HasTraits):
             self.current_capacitance =  values[0]
             self.current_frequency = int(float(freq))
             d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_frequency}),
-                                            dict({self.y_units[0] : self.current_capacitance}))
+                                            dict({self.y_units[0] : self.current_capacitance,
+                                            str(self.mode)[2:] : values[1]}))
         elif self.measurement_mode is 1:
             bias = self.instrument.query('BIAS:VOLT?')
             self.current_capacitance =  values[0]
             self.current_bias = float(bias)
-            d[self.output_channels[1]] = (dict({self.x_units[1] : self.current_bias}),
-                                            dict({self.y_units[0] : self.current_capacitance}))
-
+            d[self.output_channels[1]] = (dict({self.x_units[0] : self.current_bias}),
+                                            dict({self.y_units[0] : self.current_capacitance,
+                                            str(self.mode)[2:] : values[1]}))
         self.sample_nr += 1
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
@@ -255,19 +256,27 @@ class Agilent4284(HasTraits):
         if new is not '':
             self.instrument = SerialUtil.open(new, self.visa_resource)
             if self.instrument is None:
-                popup = GenericPopupMessage()
-                popup.message = 'Error opening ' + new
-                popup.configure_traits()
+                GenericPopupMessage(message ='Error opening ' + new).edit_traits()
                 self.instrument = None
                 self.selected_device = ''
 
-    def _measurement_mode_changed(self, new):
-        enabled_channels = [False] * len(self.output_channels)
-        enabled_channels[new] = True
-        self.enabled_channels = enabled_channels
 
-    def _enabled_channels_default(self):
-        return [True, False]
+
+    def _measurement_mode_changed(self, new):
+        if new is 0:
+            self.x_units = {0: 'Frequency'}
+            self.y_units = {0: 'Capacitance'}
+            self.enabled_channels = [True, False]
+        elif new is 1:
+            self.x_units = {0: 'Bias'}
+            self.y_units = {0: 'Capacitance'}
+            self.enabled_channels = [False, True]
+
+    def _measuremnt_mode_default(self):
+        return 1
+
+    #def _enabled_channels_default(self):
+    #    return [True, False]
 
     def __available_devices_map_default(self):
         try:

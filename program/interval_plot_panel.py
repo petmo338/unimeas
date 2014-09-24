@@ -98,19 +98,22 @@ class IntervalPlotPanel(HasTraits):
             channel_index = instrument.enabled_channels.index(True)
         except ValueError:
             return
-        self.plot_widget.setLabel('bottom', self.x_units[channel_index], units = SI_ACR.get(self.x_units[channel_index], 0))
+        self.plot_widget.setLabel('bottom', self.x_units[0], units = SI_ACR.get(self.x_units[0], 0))
         self.channel_name = instrument.output_channels[channel_index]
+        self._selected_y_unit_changed(0)
 
-    @on_trait_change('y_units{}')
     def _selected_y_unit_changed(self, unit):
         self.plot_widget.setLabel('left', self.y_units[unit], units = SI_ACR.get(self.y_units[unit], unit))
-        self.selected_y_unit = unit
+        self.clear_plots = True
 
     def _x_units_changed(self):
         pass
 
     def _y_units_changed(self):
-        self._selected_y_unit_changed(0)
+        self.selected_y_unit = 0
+
+    def _y_units_default(self):
+        return {0: 'None'}
 
     def start_stop(self, instrument):
         if instrument.running is True:
@@ -130,10 +133,11 @@ class IntervalPlotPanel(HasTraits):
 
     def add_data(self, data):
         self.index += 1
+        logger.error('cn: %s, sel_y: %s', self.channel_name, self.selected_y_unit)
         channel_data_x = data[self.channel_name][0]
-        channel_data_y = data[self.channel_name][self.selected_y_unit + 1]
+        channel_data_y = data[self.channel_name][1]
         self.data[0][self.index - 1] = channel_data_x.values()[0]
-        self.data[1][self.index - 1] = channel_data_y.values()[0]
+        self.data[1][self.index - 1] = channel_data_y.values()[self.selected_y_unit]
         self.plots[self.plot_index].updateData(self.data[0][:self.index],
                                             self.data[1][:self.index])
 

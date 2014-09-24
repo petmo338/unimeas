@@ -142,7 +142,7 @@ class DummyIntervalInstrument(HasTraits):
             self.y_units = {0: 'Capacitance'}
             self.enabled_channels = [False, True]
 
-    def _measuremnt_mode_default(self):
+    def _measurement_mode_default(self):
         return 0
 
 if __name__ == '__main__':

@@ -260,23 +260,21 @@ class Agilent4284(HasTraits):
                 self.instrument = None
                 self.selected_device = ''
 
-
-
     def _measurement_mode_changed(self, new):
         if new is 0:
             self.x_units = {0: 'Frequency'}
             self.y_units = {0: 'Capacitance'}
             self.enabled_channels = [True, False]
         elif new is 1:
-            self.x_units = {0: 'Bias'}
+            self.x_units = {0: 'Voltage'}
             self.y_units = {0: 'Capacitance'}
             self.enabled_channels = [False, True]
 
-    def _measuremnt_mode_default(self):
+    def _measurement_mode_default(self):
         return 1
 
-    #def _enabled_channels_default(self):
-    #    return [True, False]
+    def _enabled_channels_default(self):
+        return [False, True]
 
     def __available_devices_map_default(self):
         try:

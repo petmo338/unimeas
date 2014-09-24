@@ -97,6 +97,7 @@ class IntervalPlotPanel(HasTraits):
         try:
             channel_index = instrument.enabled_channels.index(True)
         except ValueError:
+            logger.warning('Enabled channels: %s on instrument: %s', instrument.enabled_channels, instrument)
             return
         self.plot_widget.setLabel('bottom', self.x_units[0], units = SI_ACR.get(self.x_units[0], 0))
         self.channel_name = instrument.output_channels[channel_index]
@@ -133,7 +134,6 @@ class IntervalPlotPanel(HasTraits):
 
     def add_data(self, data):
         self.index += 1
-        logger.error('cn: %s, sel_y: %s', self.channel_name, self.selected_y_unit)
         channel_data_x = data[self.channel_name][0]
         channel_data_y = data[self.channel_name][1]
         self.data[0][self.index - 1] = channel_data_x.values()[0]

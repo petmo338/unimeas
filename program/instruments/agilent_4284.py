@@ -30,11 +30,11 @@ class Agilent4284(HasTraits):
     name = Unicode('Agilent 4284')
 
     x_units = Dict({0: 'Voltage'})
-    y_units = Dict({0: 'Capacitance'})
+    y_units = Dict({0: 'Capacitance', 1: 'D'})
     measurement_info = Dict()
     acquired_data = List(Dict)
     output_channels = Dict({0: 'C/F', 1: 'C/V'})
-    measurement_mode = Int
+    measurement_mode = Int(2)
     start_stop = Event
     running = Bool
 
@@ -261,13 +261,14 @@ class Agilent4284(HasTraits):
                 self.selected_device = ''
 
     def _measurement_mode_changed(self, new):
+        self.enabled_channels = [False, False]
         if new is 0:
             self.x_units = {0: 'Frequency'}
-            self.y_units = {0: 'Capacitance'}
+            self.y_units = {0: 'Capacitance', 1: str(self.mode)[2:]}
             self.enabled_channels = [True, False]
         elif new is 1:
             self.x_units = {0: 'Voltage'}
-            self.y_units = {0: 'Capacitance'}
+            self.y_units = {0: 'Capacitance', 1: str(self.mode)[2:]}
             self.enabled_channels = [False, True]
 
     def _measurement_mode_default(self):
@@ -275,6 +276,9 @@ class Agilent4284(HasTraits):
 
     def _enabled_channels_default(self):
         return [False, True]
+
+    def _mode_changed(self, new):
+        self._measurement_mode_changed(self.measurement_mode)
 
     def __available_devices_map_default(self):
         try:

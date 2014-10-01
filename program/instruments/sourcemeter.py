@@ -228,8 +228,8 @@ class SourceMeter(HasTraits):
         data.append(values[1])
         data.append(values[0])
         data.append(values[1]/values[0])
-        self.voltage = values[0]
-        self.current = values[1]
+        self.voltage = values[1]
+        self.current = values[0]
         self.dispatch_data(data)
 
     def dispatch_data(self, data):

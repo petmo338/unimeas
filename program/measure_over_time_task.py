@@ -6,7 +6,7 @@ from generic_pane import GenericPane
 from instrument_help_pane import InstrumentHelpPane
 from instruments.i_instrument import IInstrument
 from sql_panel import SQLPanel
-from gasmixer_panel import GasMixerPanel
+from gasmixer_panel_2 import GasMixerPanel
 from gpio_panel import GPIOPanel
 from plot_panel import PlotPanel
 from temperature_control_panel import TemperatureControlPanel
@@ -197,6 +197,7 @@ class MeasureOverTimeTask(Task):
         self.configure_new_instrument()
         self.plot_panel.configure_plots(self.active_instrument)
         self.gpio_panel.active_instrument = self.active_instrument
+        self.gasmixer_panel.active_instrument = self.active_instrument
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument

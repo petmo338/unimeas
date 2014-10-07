@@ -122,7 +122,7 @@ class PlotPanel(HasTraits):
         self.data = np.zeros(shape=(len(instrument.output_channels) * (len(instrument.x_units) + len(instrument.y_units)), DATA_LINES), dtype=np.float32)
         for i in xrange(len(instrument.output_channels)):
             self.plots[instrument.output_channels[i]] = pg.PlotCurveItem(x=[0], y=[0],
-                pen = ({'color':COLOR_MAP[i], 'width':2}), name=instrument.output_channels[i])
+                pen = ({'color':COLOR_MAP[i], 'width':1}), name=instrument.output_channels[i])
             #if instrument.enabled_channels[i] == True:
             #    self.plot_widget.addItem(self.plots[instrument.output_channels[i]])
 

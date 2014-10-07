@@ -5,6 +5,8 @@ from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, Tuple
 from traitsui.api import Item, View, Handler, ButtonEditor,  HGroup, spring, Label
 from pyface.timer.api import Timer
 
+logger = logging.getLogger(__name__)
+
 UPDATE_INTERVAL = 500
 CONNECT_TIMEOUT = 5000
 class State:

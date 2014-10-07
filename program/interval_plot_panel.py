@@ -122,7 +122,7 @@ class IntervalPlotPanel(HasTraits):
                 self._clear_plots_fired()
                 self.plot_index = 0
             self.plots[self.plot_index] = pg.PlotCurveItem(
-                pen = ({'color':COLOR_MAP[self.plot_index % len(COLOR_MAP)], 'width':2}),
+                pen = ({'color':COLOR_MAP[self.plot_index % len(COLOR_MAP)], 'width':1}),
                 name=instrument.measurement_info.get('name', str(self.plot_index)))
             self.plot_widget.addItem(self.plots[self.plot_index])
             self.index = 0

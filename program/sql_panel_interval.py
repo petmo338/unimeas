@@ -3,12 +3,9 @@ from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
 from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler
 from traitsui.menu import OKButton, CancelButton
 from generic_popup_message import GenericPopupMessage
-import csv
 import time
 import logging
 logger = logging.getLogger(__name__)
-
-TABLE_NAME_PREPEND = 'm'
 
 class CreateMeasurementPopup(Handler):
     measurement_name = Str
@@ -38,25 +35,26 @@ class SQLWrapper():
     USER = 'sensor'
     PASSWORD = 'sensor'
     table_name = ''
-
-    def initialize(self):
+    TABLE_NAME_PREPEND = 'm'
+    def _init(self):
         from pg8000 import DBAPI
         self.DBAPI = DBAPI
         try:
             self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, \
                 user=self.USER, password=self.PASSWORD, database='postgres')
         except:
-            return list()
-
+            return False
         self.cursor = self.conn.cursor()
+        return True
+
+    def get_users(self):
+        if not self._init():
+            return []
         self.cursor.execute('SELECT datname FROM pg_database WHERE datistemplate = \
                             false AND datname != \'postgres\' ')
-#        self.conn.commit()
+        self.conn.commit()
         result = self.cursor.fetchall()
-        retval = list()
-        for user in result:
-            retval.append(user[0])
-        return retval
+        return [n[0] for n in result]
 
     def change_database(self, db):
         self.cursor.close()
@@ -66,97 +64,106 @@ class SQLWrapper():
                 password=self.PASSWORD, database=str(db))
         except:
             return False
-        self.DBAPI.paramstyle = 'numeric'
-        self.conn.autocommit = True
+
         self.cursor = self.conn.cursor()
         return True
 
     def get_measurements(self):
-
+        cursor = self.conn.cursor()
         query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
             + self.USER + '\';'
-        self.cursor.execute(query)
+        cursor.execute(query)
         self.conn.commit()
-        result = self.cursor.fetchall()
+        result = cursor.fetchall()
         retval = list()
         for table in result:
             retval.append(table[0])
         return retval
 
 
-    def set_measurement(self, column_names, name, comment = '-'):
+    def set_table(self,name, comment = ''):
         if name[0].isdigit():
-            name = TABLE_NAME_PREPEND + name
-        self.column_names = column_names
-        result = tuple()
-        query = "SELECT tablename FROM pg_tables where tablename like '" + name + "'"
-
-        try:
-            self.cursor.execute(query)
-#            self.cursor.execute("SELECT tablename FROM pg_tables where tablename like :1", (name,))
-            self.conn.commit()
-        except Exception as e:
-            logger.error('Trying tablename like %s', e)
-        else:
-            result = self.cursor.fetchall()
+            name = self.TABLE_NAME_PREPEND + name
+#        self.DBAPI.paramstyle = "numeric"
+        query = 'SELECT tablename FROM pg_tables where tablename like \'' + name + '\''
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
         if result == tuple():
-            if not self._create_table(column_names, name):
-                logger.warning('Unable to create table. Saving of data disabled')
+            if not self._create_table(name):
+                logger.warning('Unable to create table. Saving data disabled')
                 self.table_name = ''
                 return False
         else:
             logger.info('Table: %s exists, appending', name)
         self.table_name = name
-        query   = "COMMENT on table " + name + " is '" + comment + "'"
-  #      self.cursor.execute(query)
-        try:
-            self.cursor.execute(query)
-            self.conn.commit()
-        except Exception as e:
-            logger.error('Trying Comment: %s', e)
+        query   = 'COMMENT on table ' + name + ' is \'' + comment + '\';'
+        self.cursor.execute(query)
         return True
 
-    def _create_table(self, column_names, name):
-        logger.warning('column_names: %s, name %s', column_names, name)
-        query = "CREATE TABLE " + name + " (uid SERIAL, "
-        query = query + " REAL ,".join(column_names) + " REAL)"
-        try:
-            #self.cursor.execute("CREATE TABLE \'%s\'  (uid SERIAL, %s REAL)", (name, ' REAL, '.join(column_names),))
-            self.cursor.execute(query)
-            self.conn.commit()
-        except Exception as e:
-            logger.warning('Problems with query %s. Error %s', query, e)
-            return False
+    def _create_table(self, name):
+        query = 'CREATE TABLE ' + name + ' (uid SERIAL)'
+        self.cursor.execute(query)
+        self.conn.commit()
         return True
 
+    def add_columns(self, columns):
+        for col in columns:
+            query = 'ALTER TABLE ' + self.table_name +' ADD COLUMN ' + col + ' REAL DEFAULT NULL'
+            try:
+                self.cursor.execute(query)
+            except Exception as e:
+                logger.error('In add_columns, %s', e)
+
+        self.current_columns = columns
+        query =  'select column_name from information_schema.columns where table_name=\'' + self.table_name + '\';'
+        self.cursor.execute(query)
+        self.conn.commit()
+        result = self.cursor.fetchall()
+        self.column_names = [n[0] for n in result]
+        logger.info('all column names %s', self.column_names)
 
     def insert_data(self, data):
         if self.table_name == '':
-            logger.info('No table_name set. Buffering...')
+            logger.warning('No table_name set. NOT saving data!!!')
         else:
+            logger.warning('%s %s %s', data, self.current_columns, self.column_names)
             string_data = []
             for i in xrange(len(self.column_names)):
                 string_data.append('DEFAULT')
-            query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT "
-            #query = ''
-            for channel in data.keys():
-                candidates = [n for n in self.column_names if n.startswith(channel)]
-
-                for column in candidates:
+            query = 'INSERT INTO ' + str(self.table_name) + ' VALUES (DEFAULT '
+            for channel in data.keys().lower():
+                for column in self.current_columns:
                     column_index = self.column_names.index(column)
-                    try:
-                        string_data[column_index] = str(data[channel][0][column[len(channel):]])
-                    except KeyError:
-                        if data[channel][1] == dict():
-                            break
-                        string_data[column_index] = str(data[channel][1][column[len(channel):]])
+                    string_data.append[column_index] = str(data[channel][column_index%2].values()[0])
 
             for value in string_data:
-                query = query + " ," + value
-            query = query + ")"
+                query = query + ' ,' + value
+            query = query + ')'
+            logger.info('query: %s', query)
             self.cursor.execute(query)
             self.conn.commit()
-#            logger.info('query: %s', query)
+
+    def get_description(self, measurement_name):
+        if measurement_name == '':
+            return ''
+        query = 'SELECT obj_description(\'public.' + measurement_name + '\'::regclass, \'pg_class\');'
+        logger.info(query)
+        logger.info('Paramstyyle : %s', self.DBAPI.paramstyle)
+        self.DBAPI.paramstyle = 'format'
+        try:
+            self.cursor.execute(query)
+            self.conn.commit()
+        except self.DBAPI.ProgrammingError as e:
+            logger.warning(e)
+            return ''
+        result = self.cursor.fetchall()
+#        logger.warning(e)
+
+        logger.info('get_desc: %s', result)
+        if result[0][0] == None:
+            return ''
+        else:
+            return result[0][0]
 
 
 class SQLPanel(HasTraits):
@@ -164,19 +171,19 @@ class SQLPanel(HasTraits):
     ############ Panel Interface ###########################3
 
     pane_name = Str('Save Configuration')
-    pane_id = Str('sensorscience.unimeas.sql_pane')
+    pane_id = Str('sensorscience.unimeas.sql_pane_interval')
 
     database_wrapper = Instance(SQLWrapper)
 #    instrument = Instance(IInstrument)
     selected_user = Str
     new_measurement = Button
-    measurement_name = Unicode
+    measurement_name = Str
     measurement_description = Str
     save_in_database = Bool(False)
 
-    save_to_file = Bool
+
     running = Bool
-    filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
+
     available_users = List(Unicode)
     available_measurements = List(Unicode)
 
@@ -189,21 +196,21 @@ class SQLPanel(HasTraits):
                         Item('measurement_name',
                             editor=EnumEditor(name='available_measurements'),
                             enabled_when = 'not running and save_in_database'),
-                        Item('measurement_description', enabled_when = 'False', style = 'custom'),
-                        Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
-                        Item('filename', enabled_when = 'not running and save_to_file')))
+                        Item('measurement_description', style = 'custom')))
 
     def _new_measurement_fired(self):
         popup = CreateMeasurementPopup()
         ui = popup.edit_traits()
         if ui.result is True:
-            result = popup.measurement_name
-            if result[0].isdigit():
-                result = TABLE_NAME_PREPEND + result
-            result = result.replace(' ','_')
-            self.available_measurements.append(result)
-            self.measurement_name = self.available_measurements[-1]
+            self.is_new = True
+            self.available_measurements.append(popup.measurement_name)
+            self.measurement_name = popup.measurement_name
             self.measurement_description = popup.measurement_description
+            self.database_wrapper.set_table(self.measurement_name,
+                    self.measurement_description)
+
+
+
 
     def _available_users_default(self):
         return []
@@ -211,6 +218,16 @@ class SQLPanel(HasTraits):
     def _measurement_name_default(self):
         return ''
 
+    def _measurement_name_changed(self, new):
+        if hasattr(self, 'is_new'):
+            if not self.is_new:
+                self.measurement_description = self.database_wrapper.get_description(new)
+            else:
+                self.is_new = False
+        else:
+            self.measurement_description = self.database_wrapper.get_description(new)
+
+        self.database_wrapper.set_table(new, self.measurement_description)
 
     def _selected_user_changed(self, old, new):
         if new == '':
@@ -229,61 +246,36 @@ class SQLPanel(HasTraits):
     def _save_in_database_changed(self, new):
         if new:
             self.database_wrapper = SQLWrapper()
-            self.available_users = self.database_wrapper.initialize()
+            self.available_users = self.database_wrapper.get_users()
         else:
             del self.database_wrapper
             self.available_users = []
-
-    def set_column_names(self, column_names):
-        self.column_names = column_names
-
-    def write_to_file(self, data):
-        string_data = []
-        for i in xrange(len(self.column_names)):
-                string_data.append('0')
-        for channel in data.keys():
-                candidates = [n for n in self.column_names if n.startswith(channel)]
-                for column in candidates:
-                    column_index = self.column_names.index(column)
-                    try:
-                        string_data[column_index] = str(data[channel][0][column[len(channel):]])
-                    except KeyError:
-                        if data[channel][1] == dict():
-                            break
-                        string_data[column_index] = str(data[channel][1][column[len(channel):]])
-
-        self.csv_writer.writerow(string_data)
-
 
 #    @on_trait_change('instrument.sample_number')
     def add_data(self, data):
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
-        if self.save_to_file:
-            self.write_to_file(data)
 
-    def start_stop(self, running):
-        self.running = running
-        if running and self.save_in_database:
+
+    def start_stop(self, active_instrument):
+        self.running = active_instrument.running
+        if self.running and self.save_in_database:
             if len(self.measurement_name) == 0:
                 GenericPopupMessage(message = 'No measurement selected').edit_traits()
                 self.save_in_database = False
             else:
-                self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
-                    self.measurement_description)
+                if self.database_wrapper.get_description(self.measurement_name) is not self.measurement_description:
+                            self.database_wrapper.set_table(self.measurement_name, self.measurement_description)
+                self.database_wrapper.add_columns([active_instrument.x_units[0] +active_instrument.sweep_name,\
+                                                    active_instrument.y_units[0] + active_instrument.sweep_name])
 
-        if running and self.save_to_file:
-            try:
-                filehandle = open(self.filename, "a", 1)
-            except IOError:
-                logger.error('Unable to open file %s', self.filename)
-            self.csv_writer = csv.writer(filehandle, dialect=csv.excel_tab)
-            self.csv_writer.writerow(self.column_names)
-            self.column_names = self.column_names
-        if not running and self.save_to_file:
-            del self.csv_writer
 
 
 if __name__ == '__main__':
+    l = logging.getLogger()
+    console = logging.StreamHandler()
+    l.addHandler(console)
+    l.setLevel(logging.DEBUG)
+    l.info('test')
     s = SQLPanel()
     s.configure_traits()

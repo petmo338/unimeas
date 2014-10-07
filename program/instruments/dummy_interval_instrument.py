@@ -2,7 +2,7 @@ from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
     List, Unicode, Str, Int, \
    Event, Bool
-from traitsui.api import View, Item, Group, ButtonEditor, Handler
+from traitsui.api import View, Item, Group, ButtonEditor, EnumEditor, Handler
 import traits.has_traits
 #traits.has_traits.CHECK_INTERFACES = 2
 from pyface.timer.api import Timer
@@ -23,15 +23,16 @@ class DummyIntervalInstrument(HasTraits):
 
     name = Unicode('DummyIntervalInstrument')
 
-    x_units = Dict({0: 'Voltage', 1: 'Frequency'})
-    y_units = Dict({0: 'Current', 1: 'Capacitance'})
-
+    #x_units = Dict
+    #y_units = Dict
+    x_units = Dict({0: 'Voltage'})
+    y_units = Dict({0: 'Current', 1: 'Resistance'})
     acquired_data = List(Dict)
 
     start_stop = Event
     running = Bool
 
-    output_channels = Dict({0: 'ch0', 1: 'ch1'})
+    output_channels = Dict({0: 'IV', 1: 'CF'})
     measurement_info = Dict()
     enabled_channels = List(Bool)
 
@@ -54,8 +55,10 @@ class DummyIntervalInstrument(HasTraits):
     button_label = Str('Start')
     sweep_name = Str
     bias = Float
+    measurement_mode = Int
 
-    traits_view = View(Group(Item('start_voltage'), Item('stop_voltage'),
+    traits_view = View( Item('measurement_mode', editor=EnumEditor(name='output_channels'), enabled_when = 'not running'),
+                        Group(Item('start_voltage'), Item('stop_voltage'),
                             Item('step_voltage'),
                             Item('current_voltage', enabled_when='False'),
                             Item('current_current', enabled_when='False'),
@@ -100,10 +103,14 @@ class DummyIntervalInstrument(HasTraits):
         d = dict()
         self.current_current = self.current_voltage**1.3 + self.bias
         self.current_capacitance =  (self.current_frequency * (self.stop_frequency - self.current_frequency))/1e9
-        d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_voltage}),
-                                        dict({self.y_units[0] : self.current_current}))
-        d[self.output_channels[1]] = (dict({self.x_units[1] : self.current_frequency}),
-                                        dict({self.y_units[1] : self.current_capacitance}))
+        if self.measurement_mode is 0:
+            d[self.output_channels[self.measurement_mode]] = (dict({self.x_units[0] : self.current_voltage}),
+                                            dict({self.y_units[0] : self.current_current,
+                                            self.y_units[1] : self.current_voltage / self.current_current}))
+        elif  self.measurement_mode is 1:
+             d[self.output_channels[self.measurement_mode]] = (dict({self.x_units[0] : self.current_frequency}),
+                                            dict({self.y_units[0] : self.current_capacitance}))
+
         self.iteration += 1
         self.current_voltage += self.step_voltage
 
@@ -124,6 +131,19 @@ class DummyIntervalInstrument(HasTraits):
 
     def _enabled_channels_default(self):
         return [True, False]
+
+    def _measurement_mode_changed(self, new):
+        if new is 0:
+            self.x_units = {0: 'Voltage'}
+            self.y_units = {0: 'Current', 1: 'Resistance'}
+            self.enabled_channels = [True, False]
+        elif new is 1:
+            self.x_units = {0: 'Frequency'}
+            self.y_units = {0: 'Capacitance'}
+            self.enabled_channels = [False, True]
+
+    def _measurement_mode_default(self):
+        return 0
 
 if __name__ == '__main__':
     l = logging.getLogger()

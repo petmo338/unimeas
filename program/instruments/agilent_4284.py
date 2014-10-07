@@ -29,12 +29,12 @@ class Agilent4284(HasTraits):
 
     name = Unicode('Agilent 4284')
 
-    x_units = Dict({0: 'Frequency', 1: 'Voltage'})
-    y_units = Dict({0: 'Capacitance'})
+    x_units = Dict({0: 'Voltage'})
+    y_units = Dict({0: 'Capacitance', 1: 'D'})
     measurement_info = Dict()
     acquired_data = List(Dict)
     output_channels = Dict({0: 'C/F', 1: 'C/V'})
-    measurement_mode = Int
+    measurement_mode = Int(2)
     start_stop = Event
     running = Bool
 
@@ -196,14 +196,15 @@ class Agilent4284(HasTraits):
             self.current_capacitance =  values[0]
             self.current_frequency = int(float(freq))
             d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_frequency}),
-                                            dict({self.y_units[0] : self.current_capacitance}))
+                                            dict({self.y_units[0] : self.current_capacitance,
+                                            str(self.mode)[2:] : values[1]}))
         elif self.measurement_mode is 1:
             bias = self.instrument.query('BIAS:VOLT?')
             self.current_capacitance =  values[0]
             self.current_bias = float(bias)
-            d[self.output_channels[1]] = (dict({self.x_units[1] : self.current_bias}),
-                                            dict({self.y_units[0] : self.current_capacitance}))
-
+            d[self.output_channels[1]] = (dict({self.x_units[0] : self.current_bias}),
+                                            dict({self.y_units[0] : self.current_capacitance,
+                                            str(self.mode)[2:] : values[1]}))
         self.sample_nr += 1
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
@@ -255,19 +256,29 @@ class Agilent4284(HasTraits):
         if new is not '':
             self.instrument = SerialUtil.open(new, self.visa_resource)
             if self.instrument is None:
-                popup = GenericPopupMessage()
-                popup.message = 'Error opening ' + new
-                popup.configure_traits()
+                GenericPopupMessage(message ='Error opening ' + new).edit_traits()
                 self.instrument = None
                 self.selected_device = ''
 
     def _measurement_mode_changed(self, new):
-        enabled_channels = [False] * len(self.output_channels)
-        enabled_channels[new] = True
-        self.enabled_channels = enabled_channels
+        self.enabled_channels = [False, False]
+        if new is 0:
+            self.x_units = {0: 'Frequency'}
+            self.y_units = {0: 'Capacitance', 1: str(self.mode)[2:]}
+            self.enabled_channels = [True, False]
+        elif new is 1:
+            self.x_units = {0: 'Voltage'}
+            self.y_units = {0: 'Capacitance', 1: str(self.mode)[2:]}
+            self.enabled_channels = [False, True]
+
+    def _measurement_mode_default(self):
+        return 1
 
     def _enabled_channels_default(self):
-        return [True, False]
+        return [False, True]
+
+    def _mode_changed(self, new):
+        self._measurement_mode_changed(self.measurement_mode)
 
     def __available_devices_map_default(self):
         try:

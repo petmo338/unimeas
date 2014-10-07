@@ -148,6 +148,8 @@ class SourceMeter(HasTraits):
             if count > 5:
                 self.acquired_data = dict()
                 return
+        if self.reading_overflow or self.current_limit_exceeded:
+                GenericPopupMessage(message ='Reading overflow or current limit exceeded. Measurement probably limited').edit_traits()
 
 
     def _onTimer(self):
@@ -238,9 +240,7 @@ class SourceMeter(HasTraits):
         if new is not '':
             self.instrument = SerialUtil.open(new, self.visa_resource)
             if self.instrument is None:
-                popup = GenericPopupMessage()
-                popup.message = 'Error opening ' + new
-                popup.configure_traits()
+                GenericPopupMessage(message ='Error opening ' + new).edit_traits()
                 self.instrument = None
                 self.selected_device = ''
 

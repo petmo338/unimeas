@@ -11,10 +11,10 @@ pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
 DATA_LINES = 172800
-COLOR_MAP = ['FFA0FFFF', 'FF8080FF', 'FF40FFFF', 'FF0080FF',\
-            '00FFFFFF','00FF90FF','00FF40FF','00FF00FF',\
-            'A0FFFFFF','80FFFFFF','40FFFFFF','00FFFFFF',\
-            '0000FFFF','0000A0FF','800080FF','A00040FF',]
+COLOR_MAP = [(255, 63, 0), (0, 63, 255), (63, 255, 0), (255, 255, 63),\
+            (255, 63, 255), (63, 255, 255), (160, 0, 0), (0, 0, 160),\
+            (0, 160, 0), (0, 160, 160), (160, 160, 0), (160, 0, 160),\
+            (255, 160, 160), (160, 160, 255), (160, 255, 160), (0, 0, 63)]
 
 SI_ACR = { 'Voltage':'V', 'Current':'A', 'Resistance':u"\u2126", 'Time':'s',
             'SampleNumber':'', 'Capacitance': 'F', 'Frequency': 'Hz', 'BIAS': 'V'}
@@ -40,8 +40,8 @@ class PlotPanel(HasTraits):
 
     def _plot_widget_default(self):
         plot = pg.PlotWidget()
-        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen = ({'color' : '80808080', 'width': 1}))
-        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen = ({'color' : '80808080', 'width': 1}))
+        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen = ({'color' : '90909080', 'width': 1}))
+        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen = ({'color' : '90909080', 'width': 1}))
         plot.addItem(self.vLine, ignoreBounds=True)
         plot.addItem(self.hLine, ignoreBounds=True)
         self.label = pg.TextItem(anchor = (1,1))
@@ -71,7 +71,7 @@ class PlotPanel(HasTraits):
         if self.plot_widget.sceneBoundingRect().contains(pos):
             mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(pos)
 #            logger.info(mousePoint)
-            self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()))
+            self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()), color = 'k')
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
 
@@ -122,7 +122,7 @@ class PlotPanel(HasTraits):
         self.data = np.zeros(shape=(len(instrument.output_channels) * (len(instrument.x_units) + len(instrument.y_units)), DATA_LINES), dtype=np.float32)
         for i in xrange(len(instrument.output_channels)):
             self.plots[instrument.output_channels[i]] = pg.PlotCurveItem(x=[0], y=[0],
-                pen = COLOR_MAP[i], name=instrument.output_channels[i])
+                pen = ({'color':COLOR_MAP[i], 'width':2}), name=instrument.output_channels[i])
             #if instrument.enabled_channels[i] == True:
             #    self.plot_widget.addItem(self.plots[instrument.output_channels[i]])
 

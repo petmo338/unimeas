@@ -47,7 +47,7 @@ class Blank(HasTraits):
         self.logger.info('Blank stop()')
 
     def _enabled_channels_default(self):
-        return [False]
+        return [True]
 
 if __name__ is '__main__':
 

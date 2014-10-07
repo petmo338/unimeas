@@ -87,8 +87,6 @@ class MeasureIntervalTask(Task):
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
             pass
-        except WindowsError:
-            pass
         else:
             instruments.append(Agilent4284())
         try:
@@ -96,10 +94,15 @@ class MeasureIntervalTask(Task):
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
             pass
-        except WindowsError:
-            pass
         else:
             instruments.append(SourceMeter())
+        try:
+            from instruments.interval_ni6215 import NI6215
+        except ImportError as e:
+            logger.warning('Unable to import: %s', e)
+            pass
+        else:
+            instruments.append(NI6215())
         return instruments
 
     def _active_instrument_default(self):

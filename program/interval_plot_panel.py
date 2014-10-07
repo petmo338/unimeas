@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
-COLOR_MAP = ['FFA0FFFF', 'FF8080FF', 'FF40FFFF', 'FF0080FF',\
-            '00FFFFFF','00FF90FF','00FF40FF','00FF00FF',\
-            'A0FFFFFF','80FFFFFF','40FFFFFF','00FFFFFF',\
-            '0000FFFF','0000A0FF','800080FF','A00040FF',]
+COLOR_MAP =[(255, 63, 0), (0, 63, 255), (63, 255, 0), (255, 255, 63),\
+            (255, 63, 255), (63, 255, 255), (160, 0, 0), (0, 0, 160),\
+            (0, 160, 0), (0, 160, 160), (160, 160, 0), (160, 0, 160),\
+            (255, 160, 160), (160, 160, 255), (160, 255, 160), (0, 0, 63)]
 
 SI_ACR = { 'Frequency':'Hz', 'Capacitance':'F', 'Resistance':u"\u2126", 'Current':'A', 'Voltage':'V'}
 class IntervalPlotPanel(HasTraits):
@@ -45,8 +45,8 @@ class IntervalPlotPanel(HasTraits):
 
     def _plot_widget_default(self):
         plot = pg.PlotWidget()
-        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen = ({'color' : '80808080', 'width': 1}))
-        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen = ({'color' : '80808080', 'width': 1}))
+        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen = ({'color' : '90909080', 'width': 1}))
+        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen = ({'color' : '90909080', 'width': 1}))
         plot.addItem(self.vLine, ignoreBounds=True)
         plot.addItem(self.hLine, ignoreBounds=True)
         self.label = pg.TextItem(anchor = (1,1), color = 'r')
@@ -68,7 +68,7 @@ class IntervalPlotPanel(HasTraits):
 
         if self.plot_widget.sceneBoundingRect().contains(pos):
             mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(pos)
-            self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()))
+            self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()), color='k')
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
 
@@ -122,7 +122,7 @@ class IntervalPlotPanel(HasTraits):
                 self._clear_plots_fired()
                 self.plot_index = 0
             self.plots[self.plot_index] = pg.PlotCurveItem(
-                pen = COLOR_MAP[self.plot_index % len(COLOR_MAP)],
+                pen = ({'color':COLOR_MAP[self.plot_index % len(COLOR_MAP)], 'width':2}),
                 name=instrument.measurement_info.get('name', str(self.plot_index)))
             self.plot_widget.addItem(self.plots[self.plot_index])
             self.index = 0

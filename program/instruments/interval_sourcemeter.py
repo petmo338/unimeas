@@ -148,6 +148,8 @@ class SourceMeter(HasTraits):
             if count > 5:
                 self.acquired_data = dict()
                 return
+        if self.reading_overflow or self.current_limit_exceeded:
+                GenericPopupMessage(message ='Reading overflow or current limit exceeded. Measurement probably limited').edit_traits()
 
 
     def _onTimer(self):

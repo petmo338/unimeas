@@ -8,6 +8,6 @@ class Instrument(Base):
 
     id = Column(Integer, primary_key=True)
     model = Column(String)
-    serial = Column(String)
+    serial = Column(String, unique = True)
     description = Column(String)
     measurement_sessions = relationship('MeasurementSession', backref='instruments')

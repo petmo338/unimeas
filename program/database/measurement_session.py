@@ -34,7 +34,7 @@ class MeasurementSession(Base):
     name = Column(String)
     instrument = Column(Integer, ForeignKey('instruments.id'))
     user = Column(Integer, ForeignKey('users.id'))
-    data_table = Column(Integer)
+    data_table = Column(String, unique = True, default='NOT SET')
     description = Column(String)
     sensor_id = Column(String)
     gasmixer_system = Column(String)                    

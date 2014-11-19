@@ -27,3 +27,8 @@ Make personal preset load possibility
 
 Add rescan for instrument
 Gasmixer connection bug fixes
+
+sourcemeter. Try range from + to -
+DO CHECK ABOUT NO ZERO I wehn V is 0
+
+csv_writer saknas vid andra loggningen

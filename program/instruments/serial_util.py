@@ -1,9 +1,10 @@
 from time import sleep
 import logging
+from pyvisa.constants import AccessModes
 logger = logging.getLogger(__name__)
 
 class SerialUtil:
-    QUERY_DELAY = 0.01
+    QUERY_DELAY = 0.05
     ID_STRING_LENGTH = 30
     NUMBER_OF_PROBES = 4
     TIMEOUT = 1000
@@ -31,7 +32,7 @@ class SerialUtil:
 
     @classmethod
     def open(cls, resource_name, visa_resource, command = '*IDN?'):
-        instrument = visa_resource.open_resource(resource_name, timeout = cls.TIMEOUT)
+        instrument = visa_resource.open_resource(resource_name, access_mode=AccessModes.exclusive_lock, timeout = cls.TIMEOUT)
         instrument.query_delay = cls.QUERY_DELAY
         for i in xrange(cls.NUMBER_OF_PROBES):
             try:

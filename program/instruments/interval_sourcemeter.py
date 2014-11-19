@@ -1,7 +1,7 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, Unicode, Str, Int, Event, Bool, Enum, Button
-from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, BooleanEditor
+    List, Unicode, Str, Int, Event, Bool, Enum, Button, Array
+from traitsui.api import View, Item, Group, HGroup, ButtonEditor, Handler, EnumEditor, BooleanEditor
 
 from pyface.timer.api import Timer
 import visa
@@ -9,6 +9,7 @@ from serial_util import SerialUtil
 from ..generic_popup_message import GenericPopupMessage
 from time import sleep
 import logging
+import numpy as np
 visa.logger.level=logging.ERROR
 logger = logging.getLogger(__name__)
 
@@ -56,16 +57,18 @@ class SourceMeter(HasTraits):
     button_label = Str('Start')
     sweep_name = Str
 
+    output_values = Array
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
-    identify_button = Button('Identify')
+    identify_button = Button('Beep!')
+    rescan_button = Button('Rescan')
     visa_resource = Instance(visa.ResourceManager, ())
     instrument = Instance(visa.Resource)
 
-    traits_view = View(Group(Item('selected_device', label = 'Device', \
+    traits_view = View(Group(HGroup(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
-                                enabled_when='not running'),
-                            Item('identify_button', enabled_when = 'selected_device != \'\''),
+                                enabled_when='not running'), Item('rescan_button', enabled_when='not running', show_label = False)),
+                            Item('identify_button', enabled_when = 'selected_device != \'\'', label = 'Identify'),
                             label = 'Instrument', show_border=True),
                         Group(Item('start_voltage', enabled_when='not running'),
                             Item('step_voltage', enabled_when='not running'),
@@ -128,6 +131,9 @@ class SourceMeter(HasTraits):
         self.sample_nr = 0
         self.running = True
         self.instrument_init()
+        length = np.abs(self.stop_voltage - self.start_voltage) / self.step_voltage
+        self.output_values = np.divide(np.array(xrange(int(length) + 1)), length)
+        self.output_values = self.start_voltage + np.multiply(self.output_values, self.stop_voltage - self.start_voltage)
         if self.timer is None:
             self.timer = Timer(self.update_interval * 1000, self._onTimer)
         else:
@@ -154,6 +160,7 @@ class SourceMeter(HasTraits):
 
     def _onTimer(self):
         self.timer.Stop()
+        self.sample_nr += 1
         self.timer_dormant = True
         d = dict()
         values = self.instrument.query_ascii_values('print(smua.measure.iv())')
@@ -173,13 +180,10 @@ class SourceMeter(HasTraits):
         d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_voltage}),
                                         dict({self.y_units[0] : self.current_current}))
         self.acquired_data.append(d)
-
-        calc_curr_voltage = self.start_voltage + self.sample_nr * self.step_voltage
         self.timer.Start(self.update_interval * 1000)
         self.timer_dormant = False
-        if calc_curr_voltage <= self.stop_voltage:
-            self.instrument.write('smua.source.levelv = %e'  % (calc_curr_voltage + self.step_voltage))
-            self.sample_nr += 1
+        if self.sample_nr < len(self.output_values):
+            self.instrument.write('smua.source.levelv = %e'  % self.output_values[self.sample_nr])
         else:
             self.start_stop = True
 
@@ -208,6 +212,11 @@ class SourceMeter(HasTraits):
             self.instrument.write('beeper.beep(0.2, 621)')
             sleep(0.4)
             self.instrument.write('beeper.beep(0.2, 453)')
+
+
+    def _rescan_button_fired(self):
+        self._available_devices_map = self.__available_devices_map_default()
+        self.selected_device = self._selected_device_default()
 
     def _enabled_channels_default(self):
         return [True]

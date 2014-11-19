@@ -1,6 +1,6 @@
 from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
-    Unicode, Str
-from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler
+    Unicode, Str, File
+from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler, FileEditor
 from traitsui.menu import OKButton, CancelButton
 from generic_popup_message import GenericPopupMessage
 import csv
@@ -117,7 +117,7 @@ class SQLWrapper():
         return True
 
     def _create_table(self, column_names, name):
-        logger.warning('column_names: %s, name %s', column_names, name)
+#        logger.warning('column_names: %s, name %s', column_names, name)
         query = "CREATE TABLE " + name + " (uid SERIAL, "
         query = query + " REAL ,".join(column_names) + " REAL)"
         try:
@@ -154,8 +154,11 @@ class SQLWrapper():
             for value in string_data:
                 query = query + " ," + value
             query = query + ")"
-            self.cursor.execute(query)
-            self.conn.commit()
+            try:
+                self.cursor.execute(query)
+                self.conn.commit()
+            except Exception as e:
+                logger.error('SQL error %s', e)
 #            logger.info('query: %s', query)
 
 
@@ -176,7 +179,8 @@ class SQLPanel(HasTraits):
 
     save_to_file = Bool
     running = Bool
-    filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
+#    filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
+    filename = File
     available_users = List(Unicode)
     available_measurements = List(Unicode)
 
@@ -191,7 +195,8 @@ class SQLPanel(HasTraits):
                             enabled_when = 'not running and save_in_database'),
                         Item('measurement_description', enabled_when = 'False', style = 'custom'),
                         Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
-                        Item('filename', enabled_when = 'not running and save_to_file')))
+                        #Item('filename', enabled_when = 'not running and save_to_file'),
+                        Item('filename',  style='simple', editor = FileEditor(dialog_style = 'save', filter = ['*.csv']))))
 
     def _new_measurement_fired(self):
         popup = CreateMeasurementPopup()
@@ -252,7 +257,8 @@ class SQLPanel(HasTraits):
                             break
                         string_data[column_index] = str(data[channel][1][column[len(channel):]])
 
-        self.csv_writer.writerow(string_data)
+        if hasattr(self, 'csv_writer'):
+            self.csv_writer.writerow(string_data)
 
 
 #    @on_trait_change('instrument.sample_number')
@@ -277,11 +283,12 @@ class SQLPanel(HasTraits):
                 filehandle = open(self.filename, "a", 1)
             except IOError:
                 logger.error('Unable to open file %s', self.filename)
-            self.csv_writer = csv.writer(filehandle, dialect=csv.excel_tab)
-            self.csv_writer.writerow(self.column_names)
+            else:
+                self.csv_writer = csv.writer(filehandle, dialect=csv.excel_tab)
+                self.csv_writer.writerow(self.column_names)
             self.column_names = self.column_names
-        if not running and self.save_to_file:
-            del self.csv_writer
+#        if not running and self.save_to_file:
+#            del self.csv_writer
 
 
 if __name__ == '__main__':

@@ -10,4 +10,5 @@ class Instrument(Base):
     model = Column(String)
     serial = Column(String, unique = True)
     description = Column(String)
-    measurement_sessions = relationship('MeasurementSession', backref='instruments')
+
+    measurement_sessions = relationship('MeasurementSession', backref='instrument')

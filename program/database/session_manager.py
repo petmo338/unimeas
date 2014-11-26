@@ -30,7 +30,7 @@ class SessionManager(object):
     session = None
     def __init__(self, dsn = 'sqlite:///:memory:'):
         try:
-            self.engine = create_engine(dsn, echo=True)
+            self.engine = create_engine(dsn, echo = False)
             Session = sessionmaker(bind = self.engine)
             self.session = Session()
             Base.metadata.create_all(self.engine)
@@ -52,9 +52,9 @@ class SessionManager(object):
             self.session.add(User(ifmname = ifmname, fullname = fullname))
 
     @commit_on_success
-    def add_measurement_class(self, name, spec, desc, type_enum):
+    def add_measurement_class(self, name, spec, nr_of_samples, desc, type_enum):
         if self.session.query(MeasurementClass).filter_by(specification=spec).first() is None:
-            self.session.add(MeasurementClass(name = name, specification = spec, description = desc, measurement_type = type_enum))
+            self.session.add(MeasurementClass(name = name, specification = spec, number_of_samples = nr_of_samples, description = desc, measurement_type = type_enum))
 
     @commit_on_success
     def add_instrument(self, model, serial, desc):
@@ -78,22 +78,22 @@ class SessionManager(object):
         self.ms = self.session.query(MeasurementSession).filter_by(data_table='NOT SET').first()
         if self.ms is None:
             try:
-                self.ms = MeasurementSession(name = kwargs['name'], instrument = kwargs['instrument'],\
+                self.ms = MeasurementSession(name = kwargs['name'], instrument_id = kwargs['instrument'],\
                                                     user = kwargs['user'], description = kwargs['description'],\
                                                     sensor_id = kwargs['sensor_id'], gasmixer_system  = kwargs['gasmixer_system'],\
-                                                    measurement_class = kwargs['measurement_class'])
+                                                    measurement_class_id = kwargs['measurement_class'])
             except KeyError as k:
                 logger.error(k)
                 return None
         else:
             try:
                 self.ms.name = kwargs['name']
-                self.instrument = kwargs['instrument']
-                self.user = kwargs['user']
-                self.description = kwargs['description']
-                self.sensor_id = kwargs['sensor_id']
-                self.gasmixer_system  = kwargs['gasmixer_system']
-                self.measurement_class = kwargs['measurement_class']
+                self.ms.instrument_id = kwargs['instrument']
+                self.ms.user = kwargs['user']
+                self.ms.description = kwargs['description']
+                self.ms.sensor_id = kwargs['sensor_id']
+                self.ms.gasmixer_system  = kwargs['gasmixer_system']
+                self.ms.measurement_class_id = kwargs['measurement_class']
             except KeyError as k:
                 logger.error(k)
                 return None
@@ -104,49 +104,51 @@ class SessionManager(object):
             logger.warning(e)
             self.session.rollback()
             return None
-        self.ms.data_table = 'data_table_%d' % self.ms.id
-        msh = MeasurementSessionHandler(self.engine, self.ms)
-        self.session.commit()
-        return msh
+        #self.ms.data_table = 'data_table_%d' % self.ms.id
+        #msh = MeasurementSessionHandler(self.engine, self.ms)
+        #self.session.commit()
+        return self.ms
             
              
-class MeasurementSessionHandler(object):
+#class MeasurementSessionHandler(object):
     
-    def __init__(self, engine, measurement_session):
-        Session = sessionmaker(bind = engine)
-        self.session = Session()
-        self.measurement_session = measurement_session
-        try:
-            from sqlalchemy.sql.expression import text
-            from sqlalchemy import Column, DateTime, Table, Integer
-            #self.data_table = Table(self.measurement_session.data_table, Base.metadata, Column('id', Integer, primary_key=True),\
-            #    Column('created_at', DateTime, server_default=text('NOW()')))
-            self.DataTable = type('DataTable', (Base,), {'__tablename__': self.measurement_session.data_table,\
-                'id': Column(Integer, primary_key=True), 'created_at': Column(DateTime, server_default=text('NOW()'))})
+#    def __init__(self, engine, measurement_session):
+#        Session = sessionmaker(bind = engine)
+#        self.session = Session()
+#        self.measurement_session = measurement_session
+#        try:
+#            from sqlalchemy.sql.expression import text
+#            from sqlalchemy import Column, DateTime, Table, Integer
+#            #self.data_table = Table(self.measurement_session.data_table, Base.metadata, Column('id', Integer, primary_key=True),\
+#            #    Column('created_at', DateTime, server_default=text('NOW()')))
+#            self.DataTable = type('DataTable', (Base,), {'__tablename__': self.measurement_session.data_table,\
+#                'id': Column(Integer, primary_key=True), 'created_at': Column(DateTime, server_default=text('NOW()'))})
 
-            #Base.metadata.create_all(tables = [data_table.__table__])
-            self.DataTable.__table__.create(engine)
-            #self.data_table.create(engine)
-            #self.session.add(self.DataTable)
-            #self.session.add(self.measurement_session)
-            #self.session.commit()          
-        except Exception as e:
-            logger.warning(e)
+#            #Base.metadata.create_all(tables = [data_table.__table__])
+#            self.DataTable.__table__.create(engine)
+#            #self.data_table.create(engine)
+#            #self.session.add(self.DataTable)
+#            #self.session.add(self.measurement_session)
+#            #self.session.commit()          
+#        except Exception as e:
+#            logger.warning(e)
             
-    def add_data(self, data):
-        self.session.add(self.DataTable())
+#    def add_data(self, data):
+#        self.session.add(self.DataTable())
       
-#    def next_run(self. names)
-#        self.DataTable.XXX = Column(names[0] + '_x', Float)
-#        self.DataTable.__table__.append_column(self.DataTable.XXX   )
-#        res = self.engine.execute('ALTER TABLE %s') 
+##    def next_run(self. names)
+##        self.DataTable.XXX = Column(names[0] + '_x', Float)
+##        self.DataTable.__table__.append_column(self.DataTable.XXX   )
+##        res = self.engine.execute('ALTER TABLE %s') 
                         
                                                                                   
 if __name__ is '__main__':
-    s = SessionManager(dsn = 'postgresql://petermoller:lotus123@localhost/unimeas')
-    s.add_user('petmo', 'Peter Möller')
+    s = SessionManager(dsn = 'postgresql://sensor:sensor@localhost/unimeas')
+    #s = SessionManager()
+    s.add_user('petmo', u'Peter Möller')
     s.add_instrument('Sourcemeter 2601B', '12345', 'blabla')
-    s.add_measurement_class('first_class', 'blabla_spec', 'bla_desc', 'INTERVAL')
+    s.add_measurement_class('first_class', 'blabla_spec', 20, 'bla_desc', 'INTERVAL')
     #s.create_session({'name':'test1_name', 'Instrument':1, 'user':'petmo', 'description':'my_desc', 'sensor_id':'sensor_id_text', 'measurement_class':1, 'gasmixer_system':'GM2'})
     ms = s.create_session(name='test1_name', instrument=1, user=1, description='my_desc', sensor_id='sensor_id_text', measurement_class=1, gasmixer_system='GM2')
-    
+    ms.engine = s.engine
+    ms.create_data_table()

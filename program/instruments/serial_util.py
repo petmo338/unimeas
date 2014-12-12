@@ -32,7 +32,7 @@ class SerialUtil:
 
     @classmethod
     def open(cls, resource_name, visa_resource, command = '*IDN?'):
-        instrument = visa_resource.open_resource(resource_name, access_mode=AccessModes.exclusive_lock, timeout = cls.TIMEOUT)
+        instrument = visa_resource.open_resource(resource_name, timeout = cls.TIMEOUT)
         instrument.query_delay = cls.QUERY_DELAY
         for i in xrange(cls.NUMBER_OF_PROBES):
             try:

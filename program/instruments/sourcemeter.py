@@ -59,7 +59,9 @@ class SourceMeter(HasTraits):
     constant_voltage_mode = Bool(False)
 
     current = Float(0.1)
+    actual_current = Float
     voltage = Float(1)
+    actual_voltage = Float
 
     current_limit = Float(100.0)
     voltage_limit = Float(5.0)
@@ -80,10 +82,12 @@ class SourceMeter(HasTraits):
 
     measurement_settings_group = Group(HGroup(Item('constant_current_mode', show_label = False), \
                                             Item('current', label = 'Current [mA]'), \
-                                            Item('voltage_limit', label = 'Voltage limit [V]'), enabled_when = 'not running'), \
+                                            Item('voltage_limit', label = 'Voltage limit [V]'), enabled_when = 'not running'),\
                                         HGroup(Item('constant_voltage_mode', show_label = False), \
                                             Item('voltage', label = 'Voltage [V]'), \
-                                            Item('current_limit', label = 'Current limit [mA]'), enabled_when = 'not running'), \
+                                            Item('current_limit', label = 'Current limit [mA]'), enabled_when = 'not running'),\
+                                            Item('actual_current', style = 'readonly'),
+                                            Item('actual_voltage', style = 'readonly'),
                                             show_border = True, label = 'Setup')
 
     instrument_settings_group = Group(HGroup(Item('current_range', \
@@ -226,8 +230,8 @@ class SourceMeter(HasTraits):
         data.append(values[1])
         data.append(values[0])
         data.append(values[1]/values[0])
-        self.voltage = values[0]
-        self.current = values[1]
+        self.actual_voltage = values[1]
+        self.actual_current = values[0] * 1000
         self.dispatch_data(data)
 
     def dispatch_data(self, data):

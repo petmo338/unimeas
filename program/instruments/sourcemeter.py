@@ -86,8 +86,8 @@ class SourceMeter(HasTraits):
                                         HGroup(Item('constant_voltage_mode', show_label = False), \
                                             Item('voltage', label = 'Voltage [V]'), \
                                             Item('current_limit', label = 'Current limit [mA]'), enabled_when = 'not running'),\
-                                            Item('actual_current', style = 'readonly'),
-                                            Item('actual_voltage', style = 'readonly'),
+                                            Item('actual_current', style = 'readonly', label = 'Actual current [mA]'),
+                                            Item('actual_voltage', style = 'readonly', label = 'Actual Voltage [V]'),
                                             show_border = True, label = 'Setup')
 
     instrument_settings_group = Group(HGroup(Item('current_range', \

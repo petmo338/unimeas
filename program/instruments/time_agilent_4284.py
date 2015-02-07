@@ -1,8 +1,8 @@
 from i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
-    List, Unicode, Str, Int, on_trait_change, \
+    List, Unicode, Str, Int, on_trait_change, Button, \
    Event, Bool, Enum
-from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor, TableEditor
+from traitsui.api import View, Item, Group, HGroup, ButtonEditor, Handler, EnumEditor, TableEditor
 
 from traitsui.table_column import NumericColumn
 from pyface.timer.api import Timer
@@ -15,13 +15,8 @@ visa.logger.level=logging.ERROR
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_FREQUENCY = int(10000)
+DEFAULT_FREQUENCY = int(1000000)
 INSTRUMENT_IDENTIFIER = ['HEWLETT', '4284A']
-class ViewHandler(Handler):
-    def closed(self, info, is_ok):
-#        logger.debug('Closing')
-        if info.object.timer is not None:
-            info.object.timer.Stop()
 
 class TableEntry(HasTraits):
 
@@ -59,14 +54,13 @@ class Agilent4284(HasTraits):
 
     acquired_data = List(Dict)
     output_channels = Dict({0: 'cap'})
-#    measurement_mode = Int
+
     start_stop = Event
     running = Bool
+    settings_changed = Bool(False)
 
     enabled_channels = List(Bool)
 
-    timer = Instance(Timer)
-    timer_dormant = Bool(False)
     update_interval = Float(0.5)
 
     frequency = Int(DEFAULT_FREQUENCY)
@@ -83,7 +77,8 @@ class Agilent4284(HasTraits):
     sample_nr = Int(0)
     start_stop = Event
     button_label = Str('Start')
-
+    set_button = Button('Set values')
+    rescan_button = Button('Rescan')
     available_frequencies = List(Int)
 
     _available_devices_map = Dict(Unicode, Unicode)
@@ -91,22 +86,23 @@ class Agilent4284(HasTraits):
     visa_resource = Instance(visa.ResourceManager, ())
     instrument = Instance(visa.Resource)
 
-#    instrument = Instance(visa.Instrument)
-
-    traits_view = View(Item('selected_device', label = 'Device', \
+    traits_view = View(HGroup(Item('selected_device', label = 'Device', \
                                 editor = EnumEditor(name='_available_devices_map'), \
-                                enabled_when='not running'),
+                                enabled_when='not running'),\
+                                Item('rescan_button', show_label = False, enabled_when='not running')),
                         Group(Item('frequency', enabled_when='not running'),
-                            Item('bias'), Item('osc_level'),
+                            Item('bias'),
+                            Item('osc_level'),
                             Item('mode', enabled_when='not running'),
+                            Item('set_button', show_label=False),
+                            label='Instrument setting', show_border = True),
                             Item('current_capacitance', style = 'readonly'),
                             Item('current_frequency', style = 'readonly'),
                             Item('current_bias', style = 'readonly'),
-                            label='Instrument setting', show_border = True, enabled_when='not running'),
-                        Item('update_interval'),
+                            
+                        Item('update_interval', enabled_when='not running'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
-                                editor = ButtonEditor(label_value='button_label')),
-                        handler = ViewHandler)
+                                editor = ButtonEditor(label_value='button_label')))
 
     def instrument_init(self):
         if self.instrument is not None:
@@ -122,52 +118,53 @@ class Agilent4284(HasTraits):
             self.instrument.write('BIAS:STAT 0')
 
     def start(self):
-#        self._generate_output_list()
         self.button_label = 'Stop'
-        self.sample_nr = 0
+        self.sample_nr = 1
         self.running = True
         self.instrument_init()
         self.start_time = time()
-        if self.timer is None:
-            self.timer = Timer(self.update_interval * 1000, self._onTimer)
-        else:
-            self.timer.Start(self.update_interval * 1000)
+        Timer.singleShot(self.update_interval * 1000 - 200, self._onTimer)
 
     def stop(self):
-        if self.timer is not None:
-            self.timer.Stop()
         self.button_label = 'Start'
         self.running = False
-        self.timer_dormant = False
         self.instrument_stop()
 
 
     def _onTimer(self):
-#        self.timer.Stop()
-        self.timer_dormant = True
+        self.last_sample_done = True
         d = dict()
         values = self.instrument.query_ascii_values('FETC:IMP?')
         self.current_bias = float(self.instrument.query('BIAS:VOLT?'))
-
         self.current_frequency = float(self.instrument.query('FREQ?'))
         self.current_capacitance =  values[0]
+        measurement_time = time() - self.start_time
+
         d[self.output_channels[0]] = (dict({self.x_units[0] : self.sample_nr,
-                                            self.x_units[1] : time() - self.start_time}),
+                                            self.x_units[1] : measurement_time}),
                                         dict({self.y_units[0] : self.current_capacitance,
                                             self.y_units[1] : self.current_frequency,
                                             self.y_units[2] : self.current_bias}))
         self.sample_nr += 1
-        self.timer_dormant = False
+#        logger.warning('_onTimer() time:  %f, primed timer with: %f, ui: %f, sn: %f',\
+#            measurement_time,((self.update_interval * float(self.sample_nr)) - measurement_time) * 1000,
+#            self.update_interval, float(self.sample_nr))
+        if self.running:
+            Timer.singleShot(max(0, ((self.update_interval * float(self.sample_nr)) - measurement_time) * 1000), self._onTimer)
         self.acquired_data.append(d)
+        if self.settings_changed:
+            self.settings_changed = False
+            self.instrument.write('VOLT ' + str(self.osc_level))
+            self.instrument.write('BIAS:VOLT ' + str(self.bias))
+            self.instrument.write('FUNC:IMP ' + str(self.mode))
+            self.instrument.write('FREQ ' + str(self.frequency))
+
 
 
     def _start_stop_fired(self):
         if self.instrument is None:
             return
-        if self.timer is None:
-            self.start()
-            return
-        if self.timer.isActive() or self.timer_dormant:
+        if self.running:
             self.stop()
         else:
             self.start()
@@ -206,6 +203,9 @@ class Agilent4284(HasTraits):
         return [True]
 
     def __available_devices_map_default(self):
+        if self.instrument is not None:
+            self.instrument.close()
+
         try:
             instruments_info = self.visa_resource.list_resources_info()
         except visa.VisaIOError:
@@ -215,6 +215,13 @@ class Agilent4284(HasTraits):
         candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
         return d
+
+    def _set_button_fired(self):
+        self.settings_changed = True
+    
+    def _rescan_button_fired(self):
+        self._available_devices_map = self.__available_devices_map_default()
+        self.selected_device = self._selected_device_default()
 
     def _selected_device_default(self):
         try:

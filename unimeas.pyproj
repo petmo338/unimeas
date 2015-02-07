@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{c6570eda-75a8-4520-8241-e20bde370dbe}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>start_unimeas.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="preferences.ini" />
+    <Content Include="ToDo.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="program\database\base.py" />
+    <Compile Include="program\database\instrument.py" />
+    <Compile Include="program\database\measurement_class.py" />
+    <Compile Include="program\database\measurement_session.py" />
+    <Compile Include="program\database\session_manager.py" />
+    <Compile Include="program\database\user.py" />
+    <Compile Include="program\database\__init__.py" />
+    <Compile Include="program\gasmixer_panel.py" />
+    <Compile Include="program\gasmixer_panel_2.py" />
+    <Compile Include="program\generic_pane.py" />
+    <Compile Include="program\generic_popup_message.py" />
+    <Compile Include="program\gpio_panel.py" />
+    <Compile Include="program\instruments\agilent_4284.py" />
+    <Compile Include="program\instruments\blank.py" />
+    <Compile Include="program\instruments\dummysourcemetertime.py" />
+    <Compile Include="program\instruments\dummy_interval_instrument.py" />
+    <Compile Include="program\instruments\interval_ni6215.py" />
+    <Compile Include="program\instruments\interval_sourcemeter.py" />
+    <Compile Include="program\instruments\i_instrument.py" />
+    <Compile Include="program\instruments\ni6215.py" />
+    <Compile Include="program\instruments\SB50_moslab.py" />
+    <Compile Include="program\instruments\serial_util.py" />
+    <Compile Include="program\instruments\sourcemeter.py" />
+    <Compile Include="program\instruments\time_agilent_4284.py" />
+    <Compile Include="program\instruments\time_boonton7200.py" />
+    <Compile Include="program\instruments\__init__.py" />
+    <Compile Include="program\instrument_config_pane.py" />
+    <Compile Include="program\instrument_help_pane.py" />
+    <Compile Include="program\instrument_show_group.py" />
+    <Compile Include="program\interval_plot_panel.py" />
+    <Compile Include="program\mainwindow_plugin.py" />
+    <Compile Include="program\measure_interval_task.py" />
+    <Compile Include="program\measure_over_time_task.py" />
+    <Compile Include="program\plot_panel.py" />
+    <Compile Include="program\qtgraph_editor.py" />
+    <Compile Include="program\sql_panel.py" />
+    <Compile Include="program\sql_panel_interval.py" />
+    <Compile Include="program\sql_panel_time.py" />
+    <Compile Include="program\temperature_control_panel.py" />
+    <Compile Include="program\unimeas.py" />
+    <Compile Include="program\unimeas_application.py" />
+    <Compile Include="program\unimeas_preferences.py" />
+    <Compile Include="program\__init__.py" />
+    <Compile Include="start_unimeas.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="program" />
+    <Folder Include="program\database" />
+    <Folder Include="program\instruments" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

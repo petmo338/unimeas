@@ -3,6 +3,7 @@ from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
 from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler
 from traitsui.menu import OKButton, CancelButton
 from generic_popup_message import GenericPopupMessage
+from database import SessionManager
 import time
 import logging
 logger = logging.getLogger(__name__)
@@ -27,145 +28,6 @@ class CreateMeasurementPopup(Handler):
         else:
             self.measurement_name = ''
 
-
-class SQLWrapper():
-
-    SERVER_HOST = 'pc15389.sensor.lab'
-#    SERVER_HOST = 'localhost'
-    USER = 'sensor'
-    PASSWORD = 'sensor'
-    table_name = ''
-    TABLE_NAME_PREPEND = 'm'
-    def _init(self):
-        from pg8000 import DBAPI
-        self.DBAPI = DBAPI
-        try:
-            self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, \
-                user=self.USER, password=self.PASSWORD, database='postgres')
-        except:
-            return False
-        self.cursor = self.conn.cursor()
-        return True
-
-    def get_users(self):
-        if not self._init():
-            return []
-        self.cursor.execute('SELECT datname FROM pg_database WHERE datistemplate = \
-                            false AND datname != \'postgres\' ')
-        self.conn.commit()
-        result = self.cursor.fetchall()
-        return [n[0] for n in result]
-
-    def change_database(self, db):
-        self.cursor.close()
-        self.conn.close()
-        try:
-            self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, user=self.USER, \
-                password=self.PASSWORD, database=str(db))
-        except:
-            return False
-
-        self.cursor = self.conn.cursor()
-        return True
-
-    def get_measurements(self):
-        cursor = self.conn.cursor()
-        query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
-            + self.USER + '\';'
-        cursor.execute(query)
-        self.conn.commit()
-        result = cursor.fetchall()
-        retval = list()
-        for table in result:
-            retval.append(table[0])
-        return retval
-
-
-    def set_table(self,name, comment = ''):
-        if name[0].isdigit():
-            name = self.TABLE_NAME_PREPEND + name
-#        self.DBAPI.paramstyle = "numeric"
-        query = 'SELECT tablename FROM pg_tables where tablename like \'' + name + '\''
-        self.cursor.execute(query)
-        result = self.cursor.fetchall()
-        if result == tuple():
-            if not self._create_table(name):
-                logger.warning('Unable to create table. Saving data disabled')
-                self.table_name = ''
-                return False
-        else:
-            logger.info('Table: %s exists, appending', name)
-        self.table_name = name
-        query   = 'COMMENT on table ' + name + ' is \'' + comment + '\';'
-        self.cursor.execute(query)
-        return True
-
-    def _create_table(self, name):
-        query = 'CREATE TABLE ' + name + ' (uid SERIAL)'
-        self.cursor.execute(query)
-        self.conn.commit()
-        return True
-
-    def add_columns(self, columns):
-        for col in columns:
-            query = 'ALTER TABLE ' + self.table_name +' ADD COLUMN ' + col + ' REAL DEFAULT NULL'
-            try:
-                self.cursor.execute(query)
-            except Exception as e:
-                logger.error('In add_columns, %s', e)
-
-        self.current_columns = columns
-        query =  'select column_name from information_schema.columns where table_name=\'' + self.table_name + '\';'
-        self.cursor.execute(query)
-        self.conn.commit()
-        result = self.cursor.fetchall()
-        self.column_names = [n[0] for n in result]
-        logger.info('all column names %s', self.column_names)
-
-    def insert_data(self, data):
-        if self.table_name == '':
-            logger.warning('No table_name set. NOT saving data!!!')
-        else:
-            logger.warning('%s %s %s', data, self.current_columns, self.column_names)
-            string_data = []
-            for i in xrange(len(self.column_names)):
-                string_data.append('DEFAULT')
-            query = 'INSERT INTO ' + str(self.table_name) + ' VALUES (DEFAULT '
-            for channel in data.keys().lower():
-                for column in self.current_columns:
-                    column_index = self.column_names.index(column)
-                    string_data.append[column_index] = str(data[channel][column_index%2].values()[0])
-
-            for value in string_data:
-                query = query + ' ,' + value
-            query = query + ')'
-            logger.info('query: %s', query)
-            self.cursor.execute(query)
-            self.conn.commit()
-
-    def get_description(self, measurement_name):
-        if measurement_name == '':
-            return ''
-        query = 'SELECT obj_description(\'public.' + measurement_name + '\'::regclass, \'pg_class\');'
-        logger.info(query)
-        logger.info('Paramstyyle : %s', self.DBAPI.paramstyle)
-        self.DBAPI.paramstyle = 'format'
-        try:
-            self.cursor.execute(query)
-            self.conn.commit()
-        except self.DBAPI.ProgrammingError as e:
-            logger.warning(e)
-            return ''
-        result = self.cursor.fetchall()
-#        logger.warning(e)
-
-        logger.info('get_desc: %s', result)
-        if result[0][0] == None:
-            return ''
-        else:
-            return result[0][0]
-
-
 class SQLPanel(HasTraits):
 
     ############ Panel Interface ###########################3
@@ -173,7 +35,7 @@ class SQLPanel(HasTraits):
     pane_name = Str('Save Configuration')
     pane_id = Str('sensorscience.unimeas.sql_pane_interval')
 
-    database_wrapper = Instance(SQLWrapper)
+#    database_wrapper = Instance(SQLWrapper)
 #    instrument = Instance(IInstrument)
     selected_user = Str
     new_measurement = Button

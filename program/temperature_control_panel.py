@@ -6,13 +6,12 @@ from traitsui.table_column import NumericColumn
 import logging
 import serial
 import os
-import time
+from time import sleep, time
 from serial.tools import list_ports
 from pyface.timer.api import Timer
 import numpy as np
 import threading
 import Queue
-import numpy as np
 logger = logging.getLogger(__name__)
 
 def pv_to_temp(pv, offset = 0.0):
@@ -54,7 +53,7 @@ class SerialHandler(threading.Thread):
         except serial.SerialException as e:
             logger.error('Error opening COM port: %s', e)
         logger.debug('ser %s', self.ser)
-        time.sleep(1.6)
+        sleep(1.6)
         self.ser.readall()
         self.ser.write('C')
         result = self.ser.readline()
@@ -67,7 +66,7 @@ class SerialHandler(threading.Thread):
         while self.ser.inWaiting() > 0:
             self.ser.read()
         while not self.exit_flag:
-            time.sleep(self.UPDATE_INTERVAL / 1000.0)
+            sleep(self.UPDATE_INTERVAL / 1000.0)
             msg = ''
             self.ser.write('p')
             #time.sleep(0.01)
@@ -143,6 +142,7 @@ class TemperatureControlPanel(HasTraits):
     set_temp = Float
     current_time = Float
     row_start_time = Float
+    start_time = Float
     running = False
 
     temperature_table = List(Float)
@@ -180,7 +180,8 @@ class TemperatureControlPanel(HasTraits):
     def _onTimer(self):
         self._poll_queue()
 
-        self.current_time += (self.UPDATE_INTERVAL / 1000)
+        #self.current_time += (self.UPDATE_INTERVAL / 1000)
+        self.current_time = time() - self.start_time
         index = int(np.floor(self.current_time))
         if index >= len(self.temperature_table):
             return
@@ -247,7 +248,10 @@ class TemperatureControlPanel(HasTraits):
             if self.running:
                 return
             #logger.info('Starting')
+            self.start_time = time()
             self.calculate_temperature_table()
+            for row in self.table_entries:
+                row.remaining = row.time
             #self.controller = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
             self.current_time = 0
             self.current_row = 0

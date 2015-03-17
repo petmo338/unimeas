@@ -38,5 +38,4 @@ many sweeps dont increase in number
 Lock device only when running
 
 Agllent interval don't correctly interpret sample interval
-
 SourceMeter the same

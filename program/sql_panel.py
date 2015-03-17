@@ -77,7 +77,10 @@ class SQLWrapper():
             + self.USER + '\';'
         self.cursor.execute(query)
         self.conn.commit()
-        result = self.cursor.fetchall()
+        try:
+            result = self.cursor.fetchall()
+        except:
+            return list()
         retval = list()
         for table in result:
             retval.append(table[0])
@@ -126,7 +129,7 @@ class SQLWrapper():
             self.conn.commit()
         except Exception as e:
             logger.warning('Problems with query %s. Error %s', query, e)
-            return False
+            return True
         return True
 
 

@@ -132,7 +132,7 @@ class SourceMeter(HasTraits):
 
         candidates = [n for n in instruments_info.values() if n.alias is not None and n.alias.lower().startswith('sourcemeter')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
-
+        logger.warning(d)
         return d
 
     def _selected_device_changed(self, new):
@@ -147,12 +147,12 @@ class SourceMeter(HasTraits):
                 self.selected_device = ''
 
     def _selected_device_default(self):
-        try:
-            device = self._available_devices_map.items()[0][0]
-        except IndexError:
-            return ''
-        self._selected_device_changed(device)
-        return device
+        #try:
+        #    device = self._available_devices_map.items()[0][0]
+        #except IndexError:
+        #    return ''
+        #self._selected_device_changed(device)
+        return ''
 
     def _identify_button_fired(self):
         if self.selected_device != '':

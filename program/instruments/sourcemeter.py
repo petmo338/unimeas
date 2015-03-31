@@ -59,7 +59,9 @@ class SourceMeter(HasTraits):
     constant_voltage_mode = Bool(False)
 
     current = Float(0.1)
+    actual_current = Float
     voltage = Float(1)
+    actual_voltage = Float
 
     current_limit = Float(100.0)
     voltage_limit = Float(5.0)
@@ -80,10 +82,12 @@ class SourceMeter(HasTraits):
 
     measurement_settings_group = Group(HGroup(Item('constant_current_mode', show_label = False), \
                                             Item('current', label = 'Current [mA]'), \
-                                            Item('voltage_limit', label = 'Voltage limit [V]'), enabled_when = 'not running'), \
+                                            Item('voltage_limit', label = 'Voltage limit [V]'), enabled_when = 'not running'),\
                                         HGroup(Item('constant_voltage_mode', show_label = False), \
                                             Item('voltage', label = 'Voltage [V]'), \
-                                            Item('current_limit', label = 'Current limit [mA]'), enabled_when = 'not running'), \
+                                            Item('current_limit', label = 'Current limit [mA]'), enabled_when = 'not running'),\
+                                            Item('actual_current', style = 'readonly', label = 'Actual current [mA]'),
+                                            Item('actual_voltage', style = 'readonly', label = 'Actual Voltage [V]'),
                                             show_border = True, label = 'Setup')
 
     instrument_settings_group = Group(HGroup(Item('current_range', \
@@ -128,7 +132,7 @@ class SourceMeter(HasTraits):
 
         candidates = [n for n in instruments_info.values() if n.alias is not None and n.alias.lower().startswith('sourcemeter')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
-
+        logger.warning(d)
         return d
 
     def _selected_device_changed(self, new):
@@ -143,12 +147,12 @@ class SourceMeter(HasTraits):
                 self.selected_device = ''
 
     def _selected_device_default(self):
-        try:
-            device = self._available_devices_map.items()[0][0]
-        except IndexError:
-            return ''
-        self._selected_device_changed(device)
-        return device
+        #try:
+        #    device = self._available_devices_map.items()[0][0]
+        #except IndexError:
+        #    return ''
+        #self._selected_device_changed(device)
+        return ''
 
     def _identify_button_fired(self):
         if self.selected_device != '':
@@ -226,8 +230,8 @@ class SourceMeter(HasTraits):
         data.append(values[1])
         data.append(values[0])
         data.append(values[1]/values[0])
-        self.voltage = values[0]
-        self.current = values[1]
+        self.actual_voltage = values[1]
+        self.actual_current = values[0] * 1000
         self.dispatch_data(data)
 
     def dispatch_data(self, data):

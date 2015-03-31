@@ -199,12 +199,12 @@ class SourceMeter(HasTraits):
             self.start()
 
     def _selected_device_default(self):
-        try:
-            device = self._available_devices_map.items()[0][0]
-        except IndexError:
-            return ''
-        self._selected_device_changed(device)
-        return device
+        #try:
+        #    device = self._available_devices_map.items()[0][0]
+        #except IndexError:
+        #    return ''
+        #self._selected_device_changed(device)
+        return '' #device
 
     def _identify_button_fired(self):
         if self.instrument is not None:

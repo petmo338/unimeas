@@ -6,7 +6,7 @@ from traitsui.table_column import NumericColumn
 import logging
 import serial
 import os
-import time
+from time import sleep, time
 from serial.tools import list_ports
 from pyface.timer.api import Timer
 import numpy as np
@@ -49,6 +49,28 @@ def temp_to_pv(temp, offset = 0.0):
     voltage = (resistance - 91.5) * 0.019051
     return int((voltage * 1024.0) / 5.0)
 
+def pv_to_temp(pv, offset = 0.0):
+    PT100_TABLE_STEP_DEG = 30.0
+    MIN_TEMP = -10
+    MAX_TEMP = 710
+    Pt100 = np.array([96.09, 107.79, 119.40, 130.90, 142.29, 153.58,\
+              164.77, 175.86, 186.84, 197.71, 208.48, 219.15,\
+              229.72, 240.18, 250.35, 260.78, 270.93, 280.98,\
+              290.92, 300.75, 310.49, 320.12, 329.64, 339.06]) + offset
+    voltage = 5.0 * pv / 1024
+    resistance = 91.5 + voltage / 0.019051
+    
+    for i in xrange(len(Pt100) - 1):
+        if resistance < Pt100[i + 1]:
+            return PT100_TABLE_STEP_DEG * ((resistance - Pt100[i]) / (Pt100[i + 1] - Pt100[i]) + i) + MIN_TEMP
+    return MAX_TEMP
+    
+
+def temp_to_pv(temp, offset = 0.0):
+    resistance = (100.0 + offset) * (1 + (3.908e-3 * temp) + (-5.775e-7 * temp * temp))
+    voltage = (resistance - 91.5) * 0.019051
+    return int((voltage * 1024.0) / 5.0)
+
 class SerialHandler(threading.Thread):
     BAUD_RATE = 115200
     UPDATE_INTERVAL = 500.0
@@ -66,8 +88,7 @@ class SerialHandler(threading.Thread):
 #            self.ser = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=0.4)
         except serial.SerialException as e:
             logger.error('Error opening COM port: %s', e)
-#        logger.debug('ser %s', self.ser)
-#        time.sleep(1.6)
+
         self.ser.readall()
         self.ser.write('C')
         result = self.ser.readline()
@@ -80,7 +101,7 @@ class SerialHandler(threading.Thread):
         while self.ser.inWaiting() > 0:
             self.ser.read()
         while not self.exit_flag:
-            time.sleep(self.UPDATE_INTERVAL / 1000.0)
+            sleep(self.UPDATE_INTERVAL / 1000.0)
             msg = ''
             self.ser.write('p')
             #time.sleep(0.01)
@@ -156,6 +177,7 @@ class TemperatureControlPanel(HasTraits):
     set_temp = Float
     current_time = Float
     row_start_time = Float
+    start_time = Float
     running = False
 
     temperature_table = List(Float)
@@ -164,10 +186,10 @@ class TemperatureControlPanel(HasTraits):
     test_com = Button
     get_pv = Button
     set_pv = Button
+
     save = Button
     load = Button
     filename = File
-
 
     set_temp_queue = Instance(Queue.Queue)
     get_temp_queue = Instance(Queue.Queue)
@@ -198,7 +220,8 @@ class TemperatureControlPanel(HasTraits):
     def _onTimer(self):
         self._poll_queue()
 
-        self.current_time += (self.UPDATE_INTERVAL / 1000)
+        #self.current_time += (self.UPDATE_INTERVAL / 1000)
+        self.current_time = time() - self.start_time
         index = int(np.floor(self.current_time))
         if index >= len(self.temperature_table):
             return
@@ -264,8 +287,11 @@ class TemperatureControlPanel(HasTraits):
         if running:
             if self.running:
                 return
-            logger.info('Starting')
+
+            self.start_time = time()
             self.calculate_temperature_table()
+            for row in self.table_entries:
+                row.remaining = row.time
             #self.controller = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
             self.current_time = 0
             self.current_row = 0
@@ -319,7 +345,6 @@ class TemperatureControlPanel(HasTraits):
 
     def _current_temp_changed(self, new):
         msg = 's%d' % temp_to_pv(new)
-        #logger.debug('Send %s to temp controller', msg)
         self.set_temp_queue.put(msg)
         self.set_temp = new
 
@@ -350,12 +375,12 @@ class TemperatureControlPanel(HasTraits):
         if self.selected_com_port is '':
             return
         try:
+
             ser = open_port(self.selected_com_port, 0.2)
 #            ser = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
         except serial.SerialException as e:
             logger.error('Error opening COM port: %s', e)
             return
-        #response = ser.readall()
         ser.write('p')
         response = ser.readline()
         if response is not '':
@@ -370,7 +395,6 @@ class TemperatureControlPanel(HasTraits):
             return
         try:
             ser = open_port(self.selected_com_port, 0.2)
-#            ser = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
         except serial.SerialException as e:
             logger.error('Error opening COM port: %s', e)
             return
@@ -381,9 +405,7 @@ class TemperatureControlPanel(HasTraits):
      
 
     def _test_com_fired(self):
-#        ser = serial.Serial(self.selected_com_port, self.BAUD_RATE, timeout=1)
         ser = open_port(self.selected_com_port, 0.5)
-#        time.sleep(1)
         ser.readall()
         ser.write('C')
         result = ser.readline()
@@ -426,7 +448,6 @@ class TemperatureControlPanel(HasTraits):
         #    i += 1
         #self.table_entries = self.table_entries[:i]
         filehandle.close()           
-        
 
 
 if __name__ == '__main__':

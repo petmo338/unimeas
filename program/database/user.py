@@ -6,6 +6,6 @@ from base import Base
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
-    ifmname = Column(String, unique = True)
-    fullname = Column(String)
+    ifmname = Column(String(256), unique = True)
+    fullname = Column(String(256))
     measurement_sessions = relationship('MeasurementSession', backref='users')

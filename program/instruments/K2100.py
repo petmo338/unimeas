@@ -1,7 +1,7 @@
 import logging
 import os
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
-    List, Unicode, Str, Int, on_trait_change, Event, Button, Enum
+    List, Float, Unicode, Str, Int, on_trait_change, Event, Button, Enum
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
 import traits.has_traits
@@ -14,9 +14,7 @@ import visa
 from i_instrument import IInstrument
 logger = logging.getLogger(__name__)
 INSTRUMENT_IDENTIFIER = ['KEITHLEY', '21']
-x_units = {0:'SampleNumber', 1:'Time'}
-y_units = {0: 'Resistance', 1: 'Voltage', 2: 'Current',
-           3: 'Frequency', 4: 'Temp'}
+
 
 class K2100Handler(Handler):
     def closed(self, info, is_ok):
@@ -38,12 +36,18 @@ class K2100(HasTraits):
     measurement_info = Dict()
     visa_resource = Instance(visa.ResourceManager, ())
     instrument = Instance(visa.Resource)
-    measurement_mode = Str
+    measurement_mode = Str('RES')
     measurement_map_mode = Dict({'RES': 'Resistance', 'VOLT:DC': 'Voltage DC',
                                 'VOLT:AC': 'Voltage AC', 'CURR:DC': 'Current DC',
                                 'CURR:AC': 'Current AC', 'FREQ': 'Frequency',
                                 'TEMP': 'Temperature'})
-    output_unit = Str
+    x_units = Dict({0:'SampleNumber', 1:'Time'})
+    y_units = Dict({0: 'Resistance', 1: 'Voltage', 2: 'Current',
+           3: 'Frequency', 4: 'Temp'})
+    acq_value = Float
+    measurement_time = Float
+    sample_nr = Int
+    
     #### 'IInstrument' interface #############################################
     name = Unicode('Keithley 2100')
     measurement_info = Dict()
@@ -58,11 +62,14 @@ class K2100(HasTraits):
                             Item('refresh_list')),
                         Item('measurement_mode',
                             editor = EnumEditor(name='measurement_map_mode'),
-                            enabled_when='not running'),
+                            enabled_when='False'),
                         Item('sampling_interval', enabled_when='not running'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),
-                                handler=K2100Handler)
+                        Item('acq_value', style = 'readonly'),
+                        Item('measurement_time', style = 'readonly', format_str = '%.2f'),
+                        Item('sample_nr', style = 'readonly'),
+                        handler=K2100Handler)
 
     def _enabled_channels_default(self):
         return [True]
@@ -85,31 +92,38 @@ class K2100(HasTraits):
     def _refresh_list_fired(self):
         self._available_devices = self.__available_ports_default()
 
-    def _measurement_mode_changed(self, new):
-        if new.startswith('VOLT'):
-            self.output_unit = 'Voltage'
-        elif new.startswith('CURR'):
-            self.output_unit = 'Current'
-        else:
-            self.output_unit = self.measurement_map_mode[new]
+    def _fix_output_dict(self, data):
+        d = {}
+        for unit in self.y_units.values():
+            d[unit] = 0.0
+            
+        for mode in self.measurement_map_mode:
+            if mode == self.measurement_mode:
+                d[self.measurement_map_mode[mode]] = data
+        return d
 
 
     def add_data(self):
         if not self.running:
             return
         self.sample_nr += 1
-        data = self.instrument.query('READ?')     
+        try:
+            data = self.instrument.query('READ?')     
+        except visa.VisaIOError:
+            data = self.acq_value
+            pass
+        self.acq_value = float(data)
         logger.info(data)
-        measurement_time = time() - self.acq_start_time   
+        self.measurement_time = time() - self.acq_start_time   
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):
 
-            d[self.output_channels[i]] = (dict({x_units[0]:self.sample_nr,
-                                            x_units[1]:measurement_time}),\
-                            dict({self.output_unit:float(data)}))
-
-        self.timer = Timer.singleShot(max(0, ((float(self.sample_nr) * self.sampling_interval) - measurement_time) * 1000), self.add_data)
-
+            d[self.output_channels[i]] = (dict({self.x_units[0]:self.sample_nr,
+                                            self.x_units[1]:self.measurement_time}),\
+                            self._fix_output_dict(self.acq_value))                           
+        self.timer = Timer.singleShot(max(0,
+            ((float(self.sample_nr) * self.sampling_interval) - self.measurement_time) * 1000),
+            self.add_data)
         self.acquired_data.append(d)
 
 

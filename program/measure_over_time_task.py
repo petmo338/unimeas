@@ -146,6 +146,13 @@ class MeasureOverTimeTask(Task):
             logger.info('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(TGS2442_MOSLab())
+        
+        try:
+            from instruments.K2100 import K2100
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
+        else:
+            instruments.append(K2100())
 
         try:
             from instruments.time_boonton7200 import Boonton7200

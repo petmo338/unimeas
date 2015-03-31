@@ -39,3 +39,5 @@ Lock device only when running
 
 Agllent interval don't correctly interpret sample interval
 SourceMeter the same
+
+Current limit in IV is 2.5A max. Check?!

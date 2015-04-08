@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from qtgraph_editor import QTGraphWidgetEditor
-from traits.api import HasTraits, Int, Str, Instance, Dict, Array, Button, Bool, on_trait_change
+from traits.api import HasTraits, Int, Str, Instance, Dict, Array, Button, Bool, Enum, on_trait_change
 from traitsui.api import Item, View, EnumEditor, HGroup, Label
 from instruments.i_instrument import IInstrument
 import pyqtgraph as pg
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
-COLOR_MAP =[(255, 63, 0), (0, 63, 255), (63, 255, 0), (255, 255, 63),\
+COLOR_MAP =[(255, 63, 0), (0, 63, 255), (63, 255, 0), (200, 200, 63),\
             (255, 63, 255), (63, 255, 255), (160, 0, 0), (0, 0, 160),\
             (0, 160, 0), (0, 160, 160), (160, 160, 0), (160, 0, 160),\
             (255, 160, 160), (160, 160, 255), (160, 255, 160), (0, 0, 63)]
@@ -31,9 +31,11 @@ class IntervalPlotPanel(HasTraits):
     selected_y_unit = Int(0)
     clear_plots = Button
     keep_plots = Bool(False)
+    line_thickness = Int(1)
     plot_color = Int(0)
     channel_name = Str
-
+    line_selection = Dict({1:'Fine', 2:'Bold'})
+    
     data = np.zeros(shape=(2, 100000), dtype=np.float32)
 
 
@@ -41,7 +43,8 @@ class IntervalPlotPanel(HasTraits):
     traits_view = View(Item('plot_widget', editor = QTGraphWidgetEditor(), show_label = False),
                        HGroup(Label('y-unit: '), Item('selected_y_unit',
                             editor = EnumEditor(name='y_units'), show_label = False),
-                            Item('keep_plots'), Item('clear_plots', show_label = False)))
+                            Item('keep_plots'), Item('clear_plots', show_label = False),
+                            Item('line_thickness', editor = EnumEditor(name='line_selection'))))
 
     def _plot_widget_default(self):
         plot = pg.PlotWidget()
@@ -122,7 +125,7 @@ class IntervalPlotPanel(HasTraits):
                 self._clear_plots_fired()
                 self.plot_index = 0
             self.plots[self.plot_index] = pg.PlotCurveItem(
-                pen = ({'color':COLOR_MAP[self.plot_index % len(COLOR_MAP)], 'width':1}),
+                pen = ({'color':COLOR_MAP[self.plot_index % len(COLOR_MAP)], 'width':self.line_thickness}),
                 name=instrument.measurement_info.get('name', str(self.plot_index)))
             self.plot_widget.addItem(self.plots[self.plot_index])
             self.index = 0

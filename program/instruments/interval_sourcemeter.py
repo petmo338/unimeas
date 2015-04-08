@@ -170,7 +170,6 @@ class SourceMeter(HasTraits):
         self.sample_nr += 1
         d = dict()
         values = self.instrument.query_ascii_values('*STB?')
-        logger.warning('STB:%s', values)
 
         if int(values[0]) ^ 64 == 1:
             self.current_limit_exceeded = True

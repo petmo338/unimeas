@@ -7,7 +7,7 @@ from pyface.timer.api import Timer
 import visa
 from serial_util import SerialUtil
 from ..generic_popup_message import GenericPopupMessage
-from time import sleep
+from time import sleep, time
 import logging
 import numpy as np
 visa.logger.level=logging.ERROR
@@ -76,7 +76,7 @@ class SourceMeter(HasTraits):
                             Item('current_limit', enabled_when='not running', label = 'Current limit [mA]'),
 #                            Item('current_range', enabled_when='not running'),
                             Item('current_voltage', enabled_when='False', label = 'U [V]'),
-                            Item('current_current', enabled_when='False', label = 'I [A]'),
+                            Item('current_current', enabled_when='False', label = 'I [mA]'),
                             Item('reading_overflow', style = 'readonly', editor=BooleanEditor(mapping={'READING OVERFLOW':True, '':False})), # Does not work
                             Item('current_limit_exceeded', style = 'readonly', editor=BooleanEditor(mapping={'CURRENT TOO HIGH':True, '':False})),
                             label='I/V', show_border = True),
@@ -89,25 +89,34 @@ class SourceMeter(HasTraits):
     def instrument_init(self):
         if self.instrument is not None:
             self.instrument.write('reset()')
+            self.instrument.write('status.reset()')
+            self.instrument.write('status.measurement.current_limit.enable = status.measurement.current_limit.SMUA')
+            self.instrument.write('status.measurement.enable = status.measurement.ILMT')
+            self.instrument.write('status.node_enable = status.MSB')
+            self.instrument.write('status.request_enable = status.MSB')
             self.instrument.write('digio.writeprotect = 0')
-            nplc = (self.update_interval * 0.8) / 0.02     # ADC time is 80% of self.updatE_interval (assuming 50Hz PLC)
+            nplc = min(10, (self.update_interval * 0.8) / 0.2)     # ADC time is 80% of self.update_interval (assuming 50Hz PLC)
+            self.instrument.query_delay = nplc * 0.02 * 2
             self.instrument.write('smua.measure.nplc = '+ str(nplc))
             self.instrument.write('smua.sense = smua.SENSE_REMOTE') # 4-wire measurement
             self.instrument.write('status.measurement.reading_overflow.enable =\
                 status.measurement.reading_overflow.SMUA')
             self.instrument.write('status.measurement.voltage_limit.enable =\
                 status.measurement.voltage_limit.SMUA')
+            self.instrument.write('status.measurement.current_limit.enable =\
+                status.measurement.current_limit.SMUA')
             self.instrument.write('smua.source.autorangei = smua.AUTORANGE_OFF')
             self.instrument.write('smua.source.autorangev = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.autorangei = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.rangei = %e'  % ((self.current_limit * 1.1)/1000))
-            self.instrument.write('smua.measure.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
+#            self.instrument.write('smua.measure.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
 
             self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
             self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
             self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
             self.instrument.write('smua.source.levelv = %e' % self.start_voltage)
+            self.instrument.write('display.smua.measure.func = display.MEASURE_DCAMPS')          
             self.instrument.write('smua.source.output = smua.OUTPUT_ON')
 
     def instrument_stop(self):
@@ -134,17 +143,14 @@ class SourceMeter(HasTraits):
         length = np.abs(self.stop_voltage - self.start_voltage) / self.step_voltage
         self.output_values = np.divide(np.array(xrange(int(length) + 1)), length)
         self.output_values = self.start_voltage + np.multiply(self.output_values, self.stop_voltage - self.start_voltage)
-        if self.timer is None:
-            self.timer = Timer(self.update_interval * 1000, self._onTimer)
-        else:
-            self.timer.Start(self.update_interval * 1000)
+        self.acq_start_time = time()
+        self.timer = Timer.singleShot(self.update_interval * 1000, self._onTimer)
 
     def stop(self):
         if self.timer is not None:
             self.timer.Stop()
         self.button_label = 'Start'
         self.running = False
-        self.timer_dormant = False
         self.instrument_stop()
         count = 0
         while len(self.acquired_data) > 0:
@@ -159,44 +165,42 @@ class SourceMeter(HasTraits):
 
 
     def _onTimer(self):
-        self.timer.Stop()
+        if not self.running:
+            return
         self.sample_nr += 1
-        self.timer_dormant = True
         d = dict()
-        values = self.instrument.query_ascii_values('print(smua.measure.iv())')
-        self.current_voltage = values[1]
-        self.current_current = values[0]
-        values = self.instrument.query_ascii_values('print(status.measurement.reading_overflow.condition)')
-        if values[0] == 2:
-            self.reading_overflow = True
-        else:
-            self.reading_overflow = False
-        values = self.instrument.query_ascii_values('print(status.measurement.current_limit.condition)')
-        if values[0] == 2:
-            self.current_limit_exceeded = True
-        else:
-            self.current_limit_exceeded = False
+        values = self.instrument.query_ascii_values('*STB?')
+        logger.warning('STB:%s', values)
 
-        d[self.output_channels[0]] = (dict({self.x_units[0] : self.current_voltage}),
-                                        dict({self.y_units[0] : self.current_current}))
-        self.acquired_data.append(d)
-        self.timer.Start(self.update_interval * 1000)
-        self.timer_dormant = False
+        if int(values[0]) ^ 64 == 1:
+            self.current_limit_exceeded = True
+
         if self.sample_nr < len(self.output_values):
-            self.instrument.write('smua.source.levelv = %e'  % self.output_values[self.sample_nr])
+            values = self.instrument.query_ascii_values('print(smua.measureivandstep(%e))' % self.output_values[self.sample_nr])
+            self.current_voltage = values[1]
+            self.current_current = values[0] * 1000
+            d[self.output_channels[0]] = (dict({self.x_units[0] : values[1]}),
+                                        dict({self.y_units[0] : values[0]}))
+            self.acquired_data.append(d)
+            measurement_time = time() - self.acq_start_time
+            self.timer = Timer.singleShot(max(1, ((float(self.sample_nr)\
+                * self.update_interval) - measurement_time) * 1000), self._onTimer)
         else:
+            values = self.instrument.query_ascii_values('print(smua.measure.iv())')
+            self.current_voltage = values[1]
+            self.current_current = values[0] * 1000
+            d[self.output_channels[0]] = (dict({self.x_units[0] : values[1]}),
+                                            dict({self.y_units[0] : values[0]}))
+            self.acquired_data.append(d)
             self.start_stop = True
 
     def _start_stop_fired(self):
         if self.instrument is None:
             return
-        if self.timer is None:
+        if self.running is False:
             self.start()
-            return
-        if self.timer.isActive() or self.timer_dormant:
-            self.stop()
         else:
-            self.start()
+            self.stop()
 
     def _selected_device_default(self):
         #try:
@@ -252,6 +256,10 @@ class SourceMeter(HasTraits):
                 GenericPopupMessage(message ='Error opening ' + new).edit_traits()
                 self.instrument = None
                 self.selected_device = ''
+            else:
+                #self.instrument.write('serial.baud = 115200')
+                #self.instrument.flush(1)
+                self.instrument.query_delay = 0.03
 
     def _start_voltage_default(self):
         return DEFAULT_START_VOLTAGE

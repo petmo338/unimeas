@@ -10,7 +10,7 @@ class MeasurementClass(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    specification = Column(String, unique=True)
+    specification = Column(String)
     number_of_samples = Column(Integer)
     description = Column(String)
     measurement_type = Column(Enum('INTERVAL', 'TIME', name='measurement_type_enum'))

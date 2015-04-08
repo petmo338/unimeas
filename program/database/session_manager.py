@@ -131,6 +131,6 @@ class SessionManager(object):
             self.session.add(ms)
             self.session.commit()
         except Exception as e:
-            logger.warning(e)
+            logger.warning('Unable to create data table %s', e)
             return None
         return ms

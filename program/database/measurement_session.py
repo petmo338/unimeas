@@ -62,17 +62,18 @@ class MeasurementSession(Base):
                     conn.execute(query)
             self.data_table = table
             if self.measurement_class.measurement_type.find('INTERVAL') is 0:
-                tmp_table = Table(table, Base.metadata, Column('id', Integer, primary_key=True), autoload=True,
-                                  extend_existing=True)
+                tmp_table = Table(table, Base.metadata, Column('id', Integer, primary_key=True))
                 try:
                     tmp_table.create(conn)
                 except Exception as e:
                     logger.error(e)
                     return
-                else:
-                    query = 'INSERT INTO ' + table + ' VALUES(default)'
-                    for row in xrange(self.measurement_class.number_of_samples):
-                        conn.execute(query)
+                conn.execute(tmp_table.insert(),
+                    [dict() for d in xrange(self.measurement_class.number_of_samples)])
+                #logger.info('Making template table')
+                #query = 'INSERT INTO ' + table + ' VALUES(default)'
+                #for row in xrange(self.measurement_class.number_of_samples):
+                #    conn.execute(query)
 
             elif self.measurement_class.measurement_type.find('TIME') is 0:
 #                self.data_table = table
@@ -93,7 +94,9 @@ class MeasurementSession(Base):
                 except Exception as e:
                     logger.error(e)
                     return False
-            self.measurement_data = Table(self.data_table, Base.metadata, autoload=True, autoload_with=self.engine)
+            self.measurement_data = Table(self.data_table, Base.metadata,
+                                            autoload=True, extend_existing=True,
+                                            autoload_with=self.engine)
             self.measurement_data.active_columns = columns
             return True
 

@@ -61,7 +61,7 @@ class DatabaseTest(HasTraits):
                        Item('start', editor=ButtonEditor(label_value='button_label')), handler=DatabaseTestHandler)
 
     def __init__(self):
-        self.session = db.SessionManager(dsn='postgresql://sensor:sensor@localhost/unimeas')
+        self.session = db.SessionManager(dsn='postgresql://sensor:sensor@pc15389.sensor.lab/unimeas')
         self.on_trait_change(self.update_available_sessions, 'selected+')
 
     def _available_users_default(self):
@@ -145,30 +145,32 @@ class DatabaseTest(HasTraits):
 
 
 database_test = DatabaseTest()
-database_test.configure_traits()
+#database_test.configure_traits()
 # s = db.SessionManager(dsn='postgresql://sensor:sensor@localhost/unimeas')
 # # s = SessionManager()
-# database_test.session.add_user('mikan', u'Mike Andersson')
-# database_test.session.add_user('jenser', u'Jens')
-# database_test.session.add_user('donpu', u'Donatella')
-# database_test.session.add_instrument('Sourcemeter 2601A', '32345', 'blabla bliblib')
-# database_test.session.add_instrument('Sourcemeter 2601A', '32345', 'blabla bliblib')
-# database_test.session.add_instrument('Sourcemeter 2601', '32e345', 'blabla bliblib fds')
-# database_test.session.add_instrument('Sourcemeter 2601B', '3234522', ' bliblib')
-#database_test.session.add_measurement_class('thrid_class', 'samplenr, time, voltage, current, temp, gascol', 20, 'bla_desc', 'TIME')
-# database_test.sessioncreate_session({'name':'test1_name', 'Instrument':1, 'user':'petmo', 'description':'my_desc',
-#                   'sensor_id':'sensor_id_text', 'measurement_class':1, 'gasmixer_system':'GM2'})
-# ms = database_test.session.create_session(name='test3_name', instrument=2, user=1, description='my_desc2', sensor_id='sensor_id_text',
-#                       measurement_class=1, gasmixer_system='GM2')
-# ms = database_test.session.create_session(name='test4_name', instrument=2, user=1, description='my_desc3', sensor_id='sensor_id_text3',
-#                       measurement_class=1, gasmixer_system='GM1')
-# ms = database_test.session.create_session(name='test5_name', instrument=4, user=2, description='my_desc4', sensor_id='sensor_id_text4',
-#                       measurement_class=3, gasmixer_system='GM4')
-# ms = database_test.session.create_session(name='test6_name', instrument=3, user=3, description='my_desc5', sensor_id='sensor_id_text5',
-#                       measurement_class=1, gasmixer_system='GM4')
-# ms = database_test.session.create_session(name='test7_name', instrument=1, user=2, description='my_desc2', sensor_id='sensor_id_text6',
-#                       measurement_class=3, gasmixer_system='GM3')
-ms = database_test.session.create_session(name='test189_name', instrument=1, user=1, description='my_desc2', sensor_id='sensor_id_text7',
-                    measurement_class=3, gasmixer_system='GM3')
+#database_test.session.add_user('mikan', u'Mike Andersson')
+#database_test.session.add_user('jenser', u'Jens')
+#database_test.session.add_user('donpu', u'Donatella')
+#database_test.session.add_instrument('Sourcemeter 2601A', '32345', 'SourceMeter')
+#database_test.session.add_instrument('Keitley 2100', '32345', 'Multimeter')
+#database_test.session.add_instrument('Bontoon', '32e345656', 'Cap meter')
+#database_test.session.add_instrument('NiDAQ', '3234522', ' bliblib')
+#database_test.session.add_measurement_class('Sourcemeter over time', 'samplenr, time, voltage, current, resistance, temp, gascol', 0, 'bla_desc', 'TIME')
+#database_test.session.add_measurement_class('Generic I/V 0 to 5', '', 501, '0 to 5 volts in 0.01V steps', 'INTERVAL')
+#database_test.session.add_measurement_class('Resistance over time', 'samplenr, time, resistance, temp, gascol', 0, 'bla_desc', 'INTERVAL')
+#database_test.session.add_measurement_class('Generic C/V -5 to 5',  '', 1001, '-5 to 5V bias sweep in 0.01V steps', 'INTERVAL')
+
+#ms = database_test.session.create_session(name='SrTiO3 Fet 2', instrument=1, user=1, description='500->600 deg, 3V, Ir', sensor_id='W3C24R12-2',
+#                    measurement_class=1, gasmixer_system='GM2')
+#ms = database_test.session.create_session(name='SrTiO3 cap powder', instrument=3, user=2, description='Test on cap with SrTiO3 powder', sensor_id='Nja',
+#                    measurement_class=1, gasmixer_system='GM1')
+#ms = database_test.session.create_session(name='test5_name', instrument=4, user=2, description='my_desc4', sensor_id='sensor_id_text4',
+#                    measurement_class=3, gasmixer_system='GM4')
+#ms = database_test.session.create_session(name='test6_name', instrument=3, user=3, description='my_desc5', sensor_id='sensor_id_text5',
+#                    measurement_class=1, gasmixer_system='GM4')
+#ms = database_test.session.create_session(name='test7_name', instrument=4, user=2, description='my_desc2', sensor_id='sensor_id_text6',
+#                    measurement_class=3, gasmixer_system='GM3')
+ms = database_test.session.create_session(name='tfdsfsname', instrument=1, user=1, description='my_desc2', sensor_id='sensor_id_text7',
+                    measurement_class=2, gasmixer_system='GM3')
 # ms.engine = s.engine
 # ms.create_data_table()

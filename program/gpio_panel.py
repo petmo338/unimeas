@@ -1,4 +1,4 @@
-from enthought.traits.api import HasTraits, Bool, Int, List, Float, Instance, \
+from traits.api import HasTraits, Bool, Int, List, Float, Instance, \
     Str
 from traitsui.api import Item, View, Group,Handler, \
     TableEditor, Label

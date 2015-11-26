@@ -1,4 +1,4 @@
-from enthought.traits.api import Str
+from traits.api import Str
 from traitsui.api import Item, View, Handler
 from traitsui.menu import OKButton
 

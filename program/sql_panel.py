@@ -1,4 +1,4 @@
-from enthought.traits.api import HasTraits, Bool, Instance, Button, List, \
+from traits.api import HasTraits, Bool, Instance, Button, List, \
     Unicode, Str, File
 from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler, FileEditor
 from traitsui.menu import OKButton, CancelButton

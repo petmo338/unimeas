@@ -1,6 +1,6 @@
 __author__ = 'petmo_000'
 # -*- coding: utf-8 -*-
-from enthought.traits.api import HasTraits, Bool, Int, List, Float, Instance, Any,\
+from traits.api import HasTraits, Bool, Int, List, Float, Instance, Any,\
     Str, Button, on_trait_change, Dict
 from traitsui.api import Item, View, Group, HGroup, Handler, \
     ButtonEditor, EnumEditor

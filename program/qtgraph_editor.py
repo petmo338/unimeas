@@ -14,9 +14,9 @@ from pyqtgraph.Qt import QtGui, QtCore
 #from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg
 import pyqtgraph as pg
 from pyqtgraph.dockarea import Dock, DockArea
-from enthought.traits.api import Any, Instance, Array, Int
-from enthought.traits.ui.qt4.editor import Editor
-from enthought.traits.ui.qt4.basic_editor_factory import BasicEditorFactory
+from traits.api import Any, Instance, Array, Int
+from traitsui.qt4.editor import Editor
+from traitsui.qt4.basic_editor_factory import BasicEditorFactory
 from traitsui.api import Handler
 
 import logging
@@ -110,8 +110,8 @@ class QTGraphWidgetInitHandler(Handler):
 
 if __name__ == "__main__":
     # Create a window to demo the editor
-    from enthought.traits.api import HasTraits
-    from enthought.traits.ui.api import View, Item
+    from traits.api import HasTraits
+    from traits.ui.api import View, Item
     from numpy import sin, cos, linspace, pi
 #    from matplotlib.widgets import  RectangleSelector
 

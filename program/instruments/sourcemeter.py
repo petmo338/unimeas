@@ -42,7 +42,7 @@ class SourceMeter(HasTraits):
     running = Bool
 
 #    output_channels = Dict({0: 'smua0', 1: 'smua1', 2: 'smua2', 3: 'smua3'})
-    output_channels = Dict({0: 'smua0'})
+    output_channels = Dict({0: 'smua'})
     """ Must not have overlapping names/numbers \
         i.e. ai1, ai12, ai13 will generate error """
     smua0_enabled = Bool(True)

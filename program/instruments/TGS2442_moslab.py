@@ -85,13 +85,16 @@ class TGS2442_MOSLab(HasTraits):
                     pass
         else:
             # unix
-            for port in list_ports.comports():
+            for port in serial.list_ports.comports():
                 l.append(port[0])
         return l
 
 
     def _refresh_list_fired(self):
         self._available_devices = self.__available_ports_default()
+
+    def _portname_changed(self):
+        self.serialport = None
 
     def add_data(self):
         if not self.running:
@@ -102,7 +105,6 @@ class TGS2442_MOSLab(HasTraits):
         self.serialport.readinto(b)
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):
-
             d[self.output_channels[i]] = (dict({self.x_units[0]:self.sample_nr,
                                             self.x_units[1]:measurement_time}),\
                             dict({self.y_units[0]:4.9*((b[0]*256 + b[1])/1024.0)}))

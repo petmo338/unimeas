@@ -17,7 +17,7 @@ COLOR_MAP = [(255, 63, 0), (0, 63, 255), (63, 255, 0), (255, 255, 63),\
             (255, 160, 160), (160, 160, 255), (160, 255, 160), (0, 0, 63)]
 
 SI_ACR = { 'Voltage':'V', 'Current':'A', 'Resistance':u"\u2126", 'Time':'s',
-            'SampleNumber':'', 'Capacitance': 'F', 'Frequency': 'Hz', 'BIAS': 'V'}
+            'SampleNumber':'', 'Capacitance': 'F', 'Frequency': 'Hz', 'BIAS': 'V', 'Temperature': u'\u00B0C', 'Percent': '%'}
 class PlotPanel(HasTraits):
     pane_name = Str('Plot')
     pane_id = Str('sensorscience.unimeas.plot_pane')
@@ -30,7 +30,7 @@ class PlotPanel(HasTraits):
     selected_x_unit = Int(0)
     selected_y_unit = Int(0)
     plot_size = Int(DATA_LINES)
-
+    
     instrument = Instance(IInstrument)
     traits_view = View(Item('plot_widget', editor = QTGraphWidgetEditor(), show_label = False),
                        HGroup(Label('y-unit: '), Item('selected_y_unit',
@@ -48,17 +48,11 @@ class PlotPanel(HasTraits):
         plot.addItem(self.label)
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
-
-
-#        logger.info('_plot_default')
-
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         plot.sigRangeChanged.connect(self.rangeChanged)
         return plot
 
     def rangeChanged(self, evt):
-#        logger.info('rangeChanged x %f, y: %f', self.plot_widget.getPlotItem().getViewBox().viewRect().right(),\
-#            self.plot_widget.getPlotItem().getViewBox().viewRect().top())
 
         self.label.setPos(self.plot_widget.getPlotItem().getViewBox().viewRect().right(), \
             self.plot_widget.getPlotItem().getViewBox().viewRect().top())
@@ -70,51 +64,29 @@ class PlotPanel(HasTraits):
 
         if self.plot_widget.sceneBoundingRect().contains(pos):
             mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(pos)
-#            logger.info(mousePoint)
             self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()), color = 'k')
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
 
-    def update_visible_plots(self, instrument, name, old, new):
-        if not hasattr(instrument, 'enabled_channels'):
+    def update_visible_plots(self):
+        if not hasattr(self.instrument, 'enabled_channels'):
             return
-#        logger.info('otc update_visible_plots')
-
         self.plot_widget.clearPlots()
-#        for plot in self.plots:
-#            self.plot_widget.removeItem(plot)
-#        for i in xrange(len(instrument.enabled_channels)):
-#            self.plot_widget.removeItem(self.plots[instrument.output_channels[i]])
-#            logger.info('%s', self.plot_widget.getPlotItem().legend.items)
-#            self.plot_widget.getPlotItem().legend.removeItem(instrument.output_channels[i])
         legendNames = [l.text for a,l in self.legend.items]
- #       logger.info('legendNames: %s', legendNames)
         for name in legendNames:
             self.legend.removeItem(name)
-#        for sample, label in self.legend.items:
-#            logger.info('label.text %s', label.text)
-#            self.legend.removeItem(label.text)
-#        logger.info('items: %s', self.legend.items)
-        for i in xrange(len(instrument.enabled_channels)):
-            if instrument.enabled_channels[i] == True:
-                self.plot_widget.addItem(self.plots[instrument.output_channels[i]])
-#                self.legend.addItem(self.plots[instrument.output_channels[i]],
-#                    instrument.output_channels[i])
+        for i in xrange(len(self.instrument.enabled_channels)):
+            if self.instrument.enabled_channels[i] == True:
+                self.plot_widget.addItem(self.plots[self.instrument.output_channels[i]])
 
 
     def configure_plots(self, instrument):
+        self.instrument = instrument
         if not hasattr(self, 'legend'):
             self.legend = self.plot_widget.getPlotItem().addLegend()
         legendNames = [l.text for a,l in self.legend.items]
         for name in legendNames:
             self.legend.removeItem(name)
-#        logger.info('configure_plots, legend: %s', self.legend.items)
-        #plotnames = self.controller.time_plot.plots.keys()
-        #for plot in plotnames:
-        #    self.controller.time_plot.delplot(plot)
-        #for data in [n for n in self.controller.time_data.list_data() if not n.startswith('index')]:
-        #    self.controller.time_data.del_data(data)
-
 
         self.plot_widget.enableAutoRange(True, True)
 
@@ -123,16 +95,10 @@ class PlotPanel(HasTraits):
         for i in xrange(len(instrument.output_channels)):
             self.plots[instrument.output_channels[i]] = pg.PlotCurveItem(x=[0], y=[0],
                 pen = ({'color':COLOR_MAP[i], 'width':1}), name=instrument.output_channels[i])
-            #if instrument.enabled_channels[i] == True:
-            #    self.plot_widget.addItem(self.plots[instrument.output_channels[i]])
-
-
-        #self.controller.data = array(zeros((len(data_units), MAX_PLOT_LENGTH), dtype=float32))
         self.plot_increment = len(instrument.x_units) + len(instrument.y_units)
-        #self.controller.number_of_x_units = len(x_units)
         self.x_units = instrument.x_units
         self.y_units = instrument.y_units
-        self.update_visible_plots(instrument, False, False, False)
+        self.update_visible_plots()
 
 
 

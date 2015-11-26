@@ -148,6 +148,13 @@ class MeasureOverTimeTask(Task):
             instruments.append(TGS2442_MOSLab())
         
         try:
+            from instruments.sensic_cu import SenSiCCU
+        except ImportError as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
+        else:
+            instruments.append(SenSiCCU())
+
+        try:
             from instruments.K2100 import K2100
         except ImportError as e:
             logger.info('Error on import: %s, %s', type(e), e.message)

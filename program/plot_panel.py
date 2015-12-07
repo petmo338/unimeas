@@ -18,7 +18,6 @@ COLOR_MAP = [(255, 63, 0), (0, 63, 255), (63, 255, 0), (255, 255, 63),\
 
 SI_ACR = { 'Voltage':'V', 'Current':'A', 'Resistance':u"\u2126", 'Time':'s',
             'SampleNumber':'', 'Capacitance': 'F', 'Frequency': 'Hz', 'BIAS': 'V', 'Temperature': u'\u00B0C', 'Percent': '%'}
-
 class PlotPanel(HasTraits):
     pane_name = Str('Plot')
     pane_id = Str('sensorscience.unimeas.plot_pane')
@@ -61,15 +60,10 @@ class PlotPanel(HasTraits):
 
     def mouseMoved(self, evt):
 
-        self.mouse_pointer_pos = evt[0]  ## using signal proxy turns original arguments into a tuple
+        pos = evt[0]  ## using signal proxy turns original arguments into a tuple
 
-<<<<<<< HEAD
-        if self.plot_widget.sceneBoundingRect().contains(self.mouse_pointer_pos):
-            mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(self.mouse_pointer_pos)
-=======
         if self.plot_widget.sceneBoundingRect().contains(pos):
             mousePoint = self.plot_widget.getPlotItem().getViewBox().mapSceneToView(pos)
->>>>>>> 6e735d1d40261b379339eb0949ee5dee2f88d289
             self.label.setText("x=%0.3e,  y=%0.3e" % (mousePoint.x(), mousePoint.y()), color = 'k')
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())

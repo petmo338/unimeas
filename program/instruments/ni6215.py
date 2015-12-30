@@ -1,31 +1,36 @@
 import logging
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
-    List, Unicode, Str, Int, on_trait_change, Event, Button
+    List, Unicode, Str, Int, on_trait_change, Event, Button, Float
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
+from pyface.timer.api import Timer
 import traits.has_traits
 #traits.has_traits.CHECK_INTERFACES = 2
 from time import time
 from PyDAQmx.Task import Task
 from PyDAQmx.DAQmxConstants import DAQmx_Val_RSE, DAQmx_Val_Volts, \
     DAQmx_Val_Rising, DAQmx_Val_ContSamps, DAQmx_Val_Acquired_Into_Buffer, \
-    DAQmx_Val_GroupByScanNumber
+    DAQmx_Val_GroupByScanNumber, DAQmx_Val_ChanPerLine, DAQmx_Val_FiniteSamps, \
+    DAQmx_Val_GroupByChannel, DAQmx_Val_OnDemand
 
-from numpy import zeros
+
+from numpy import zeros, float64, size, mean
 import PyDAQmx
 from ctypes import byref, c_int32, c_uint32
 
+logger = logging.getLogger(__name__)
+
 from i_instrument import IInstrument
 
-class CallbackTask(Task, HasTraits):
-    output = List
-    sample_number = Int(0)
-    def __init__(self):
-        super(CallbackTask, self).__init__()
-        self.logger = logging.getLogger(__name__ + 'CallbackTask')
+MAX_TRIG_FREQ = 1000
+RENDER_INTERVAL_MS = 200
 
-    def setup(self, device, channels, sampling_interval):
+class CallbackTask(Task):
+    #output = []
+    
+    def setup(self, device, channels, sampling_interval, parent):
 #        self.ouput = zeros(len(channels))
+        self.logger = logger
         self.data = zeros(16)
         for channel in channels:
             self.logger.info('Adding %s', device + '/' + channel)
@@ -39,6 +44,9 @@ class CallbackTask(Task, HasTraits):
         self.AutoRegisterDoneEvent(0)
         self.sample_number = 0
         self.start_time = time()
+        self.parent = parent
+        self.sample_number = 0
+        self.data_acquired = parent.data_acquired
 
     def EveryNCallback(self):
         self.sample_number += 1
@@ -46,16 +54,97 @@ class CallbackTask(Task, HasTraits):
         out.append(self.sample_number)
         out.append(time() - self.start_time)
         read = c_int32()
-        self.ReadAnalogF64(1, 10.0, DAQmx_Val_GroupByScanNumber, self.data, \
-            16, byref(read), None)
+        try:
+            self.ReadAnalogF64(1, 10.0, DAQmx_Val_GroupByScanNumber, self.data, \
+                16, byref(read), None)
+        except PyDAQmx.DAQError as e:
+            print(e) 
         out.extend(self.data.tolist())
-#        self.logger.info('out: %s', out)
-        self.output = out
+        self.parent.add_data(out)
+        self.parent.data_acquired = True
+
+#        self.parent.add_data(out)
+#        self.output = out
 
 
     def DoneCallback(self, status):
-        self.logger.info("Status", status.value)
+        #self.logger.info("Status", status.value)
         return 0 # The function should return an integer
+
+
+class CallbackTaskSynced(Task):
+    #output = []
+    
+    def setup(self, device, channels, sampling_interval, parent):
+#        self.ouput = zeros(len(channels))
+        self.samples_per_chan = 15
+        self.pretrigger_samples = 12
+        self.logger = logger
+        self.data = zeros((self.samples_per_chan, len(channels)), dtype=float64)
+        self.internal_buffer = zeros((self.pretrigger_samples * MAX_TRIG_FREQ * sampling_interval, len(channels)))
+                    
+        for channel in channels:
+            self.logger.info('Adding %s', device + '/' + channel)
+            self.CreateAIVoltageChan(device + '/' + channel, "", DAQmx_Val_RSE,\
+            -10.0,10.0, DAQmx_Val_Volts, None)
+
+        self.CfgSampClkTiming('', 5000.0, DAQmx_Val_Rising, \
+            DAQmx_Val_FiniteSamps, self.samples_per_chan)
+        self.CfgDigEdgeRefTrig(device + '/PFI0', DAQmx_Val_Rising, self.pretrigger_samples)
+        self.SetBufInputBufSize(size(self.data))
+
+
+        self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, \
+            self.samples_per_chan, 0)
+        self.AutoRegisterDoneEvent(0)
+        self.parent = parent
+        self.start_time = time()
+        self.last_sample_time = self.start_time
+        self.next_sample_time = self.last_sample_time + sampling_interval
+        self.fast_sample_counter = 0
+        self.sample_number = 0
+        self.sampling_interval = sampling_interval
+        self.data_acquired = parent.data_acquired
+
+
+    def EveryNCallback(self):
+        self.fast_sample_counter += 1
+        logger.warning('EveryNCallback %d', self.fast_sample_counter)
+
+        read = c_int32()
+        try:
+            self.ReadAnalogF64(self.samples_per_chan, 0, DAQmx_Val_GroupByScanNumber, self.data, \
+                size(self.data), byref(read), None)
+        except PyDAQmx.DAQError as e:
+#            pass
+            logger.warning('Exception %s, nr of samples read %s', e, str(read))
+
+        self.internal_buffer[:][self.pretrigger_samples * (self.fast_sample_counter - 1) :
+            self.pretrigger_samples * self.fast_sample_counter] = self.data[:][:self.pretrigger_samples]
+        current_time = time()
+        if current_time > self.next_sample_time:
+            self.next_sample_time = current_time + self.sampling_interval - (current_time - self.next_sample_time)                                
+            self.sample_number += 1
+            out = []
+            out.append(self.sample_number)
+            out.append(current_time - self.start_time)
+            out.extend(mean(self.internal_buffer[:][:self.pretrigger_samples * self.fast_sample_counter], axis=0).tolist())
+            self.fast_sample_counter = 0        
+            self.parent.add_data(out)
+            self.data_acquired = True
+
+        #out.extend(self.data.tolist())
+#        logger.warning('Read %d samples', read.value)
+#        logger.warning(self.data)
+#        self.logger.info('out: %s', out)
+        #self.parent.add_data(out)
+#        self.output = out
+
+
+    def DoneCallback(self, status):
+        self.logger.info("Status %s", str(status))
+        return 0 # The function should return an integer
+
 
 class NI6215Handler(Handler):
     def closed(self, info, is_ok):
@@ -90,9 +179,18 @@ class NI6215(HasTraits):
     ai15 =Bool(False)
     button_label = Str('Start')
 
+    value_ai0= Float
+    value_ai1 = Float
+    value_ai2 = Float
+    value_ai3 = Float
+
+    synced_acqusistion = Bool(True)
+
+    data_acquired = Bool(False)
+    data = List(Float)
     output_unit = 0
     timebase = 0
-    acqusition_task = Instance(CallbackTask)
+    acqusition_task = Instance(Task)
     acquired_data = List(Dict)
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
@@ -124,13 +222,18 @@ class NI6215(HasTraits):
                         Item('ai13', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
                         Item('ai14', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH), \
                         Item('ai15', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH)))),
+                        HGroup(Item('value_ai0', style = 'readonly'),
+                                Item('value_ai1', style = 'readonly'),
+                                Item('value_ai2', style = 'readonly'),
+                                Item('value_ai3', style = 'readonly')),
+                        Item('synced_acqusistion'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),\
                                 handler=NI6215Handler)
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.on_trait_change(self.add_data, 'acqusition_task.output')
+#        self.on_trait_change(self.add_data, 'acqusition_task.output')
         self.on_trait_change(self.channel_changed, 'ai+')
         self.ai0 = self.ai1 = self.ai2 = self.ai3 = True
 
@@ -177,16 +280,25 @@ class NI6215(HasTraits):
         self._available_devices_map = self.__available_devices_map_default()
         self.__available_devices_map_changed()
 
-    def add_data(self):
-        data = self.acqusition_task.output
-        if len(data) < 18:
+    def add_data(self, data):
+        self.data = data
+
+    def handle_data(self):
+        if self.data_acquired is False:
+            return
+#        data = self.acqusition_task.output
+        self.data_acquired = False
+        if len(self.data) < 18:
             return
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):
 
-            d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-                            dict({self.y_units[0]:data[i + 2]}))
+            d[self.output_channels[i]] = (dict({self.x_units[0]:self.data[0], self.x_units[1]:self.data[1],}),\
+                            dict({self.y_units[0]:self.data[i + 2]}))
         self.acquired_data.append(d)
+        self.value_ai0 = self.data[2]
+        self.value_ai1 = self.data[3]
+        #self.timer = Timer.singleShot(RENDER_INTERVAL_MS, self.add_data)
 
     #### 'IInstrument' interface #############################################
     name = Unicode('NI-DAQmx')
@@ -203,14 +315,21 @@ class NI6215(HasTraits):
     def start(self):
         self.running = True
         self.acq_start_time = time()
-        self.acqusition_task = CallbackTask()
+        if (self.synced_acqusistion is True):
+            self.acqusition_task = CallbackTaskSynced()
+        else:
+            self.acqusition_task = CallbackTask()
         channels = []
         for i, enabled in enumerate(self.enabled_channels):
             if enabled:
                channels.append('ai' + str(i))
-        self.acqusition_task.setup(self.selected_device, \
-            channels, self.sampling_interval)
+        self.acqusition_task.setup('/' + self.selected_device, \
+            channels, self.sampling_interval, self)
         self.acqusition_task.StartTask()
+        self.timer = Timer(RENDER_INTERVAL_MS, self.handle_data)
+        self.timer.start()
+
+        
 
     def stop(self):
         self.logger.info('stop()')

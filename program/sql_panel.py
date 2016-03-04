@@ -2,7 +2,7 @@ from traits.api import HasTraits, Bool, Instance, Button, List, \
     Unicode, Str, File
 from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler, FileEditor
 from traitsui.menu import OKButton, CancelButton
-from generic_popup_message import GenericPopupMessage
+from program.generic_popup_message import GenericPopupMessage
 import csv
 import time
 import logging
@@ -138,7 +138,7 @@ class SQLWrapper():
             logger.info('No table_name set. Buffering...')
         else:
             string_data = []
-            for i in xrange(len(self.column_names)):
+            for i in range(len(self.column_names)):
                 string_data.append('DEFAULT')
             query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT "
             #query = ''
@@ -247,7 +247,7 @@ class SQLPanel(HasTraits):
 
     def write_to_file(self, data):
         string_data = []
-        for i in xrange(len(self.column_names)):
+        for i in range(len(self.column_names)):
                 string_data.append('0')
         for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from qtgraph_editor import QTGraphWidgetEditor
+from . qtgraph_editor import QTGraphWidgetEditor
 from traits.api import HasTraits, Int, Str, Instance, Dict, Array, Button, Bool, Enum, on_trait_change
 from traitsui.api import Item, View, EnumEditor, HGroup, Label
-from instruments.i_instrument import IInstrument
+from . instruments.i_instrument import IInstrument
 import pyqtgraph as pg
 import numpy as np
 import logging
@@ -19,7 +19,7 @@ COLOR_MAP =[(255, 63, 0), (0, 63, 255), (63, 255, 0), (200, 200, 63),\
 SI_ACR = { 'Frequency':'Hz', 'Capacitance':'F', 'Resistance':u"\u2126", 'Current':'A', 'Voltage':'V'}
 class IntervalPlotPanel(HasTraits):
     pane_name = Str('Plot')
-    pane_id = Str('sensorscience.unimeas.plot_pane')
+    pane_id = Str('sensorscience.unimeas.interval_plot_pane')
     plot_widget = Instance(pg.PlotWidget)
     plots = Dict
     data = Array
@@ -57,7 +57,7 @@ class IntervalPlotPanel(HasTraits):
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
-        plot.sigRangeChanged.connect(self.rangeChanged)
+        #plot.sigRangeChanged.connect(self.rangeChanged)
         plot.getViewBox().setAutoPan(x=False, y=False)
         return plot
 
@@ -139,8 +139,8 @@ class IntervalPlotPanel(HasTraits):
         self.index += 1
         channel_data_x = data[self.channel_name][0]
         channel_data_y = data[self.channel_name][1]
-        self.data[0][self.index - 1] = channel_data_x.values()[0]
-        self.data[1][self.index - 1] = channel_data_y.values()[self.selected_y_unit]
+        self.data[0][self.index - 1] = list(channel_data_x.values())[0]
+        self.data[1][self.index - 1] = list(channel_data_y.values())[self.selected_y_unit]
         self.plots[self.plot_index].updateData(self.data[0][:self.index],
                                             self.data[1][:self.index])
 

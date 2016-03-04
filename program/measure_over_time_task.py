@@ -2,15 +2,15 @@ from pyface.tasks.action.api import SMenu, SMenuBar, DockPaneToggleGroup, TaskTo
 from pyface.tasks.api import Task, TaskLayout, Tabbed, PaneItem, Splitter, TraitsTaskPane
 from traits.api import List, Instance, on_trait_change
 from traitsui.api import View
-from generic_pane import GenericPane
-from instrument_help_pane import InstrumentHelpPane
-from instruments.i_instrument import IInstrument
-from sql_panel import SQLPanel
-from gasmixer_panel_2 import GasMixerPanel
-from gpio_panel import GPIOPanel
-from plot_panel import PlotPanel
-from temperature_control_panel import TemperatureControlPanel
-from instrument_show_group import InstrumentShowGroup
+from . generic_pane import GenericPane
+from . instrument_help_pane import InstrumentHelpPane
+from . instruments.i_instrument import IInstrument
+from . sql_panel import SQLPanel
+from . gasmixer_panel_2 import GasMixerPanel
+from . gpio_panel import GPIOPanel
+from . plot_panel import PlotPanel
+from . temperature_control_panel import TemperatureControlPanel
+from . instrument_show_group import InstrumentShowGroup
 #import pdb
 import logging
 
@@ -104,76 +104,76 @@ class MeasureOverTimeTask(Task):
     def _instruments_default(self):
         instruments = []
         try:
-            from instruments.blank import Blank
+            from . instruments.blank import Blank
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(Blank())
 
         try:
-            from instruments.dummysourcemetertime import DummySourcemeterTime
+            from . instruments.dummysourcemetertime import DummySourcemeterTime
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(DummySourcemeterTime())
 
         try:
-            from instruments.sourcemeter import SourceMeter
+            from . instruments.sourcemeter import SourceMeter
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         #except WindowsError:
         #    pass
         else:
             instruments.append(SourceMeter())
 
         try:
-            from instruments.ni6215 import NI6215
+            from . instruments.ni6215 import NI6215
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(NI6215())
 
         try:
-            from instruments.SB50_moslab import NI6215_MOSLab
+            from . instruments.SB50_moslab import NI6215_MOSLab
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(NI6215_MOSLab())
 
         try:
-            from instruments.TGS2442_moslab import TGS2442_MOSLab
+            from . instruments.TGS2442_moslab import TGS2442_MOSLab
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(TGS2442_MOSLab())
         
         try:
-            from instruments.sensic_cu import SenSiCCU
+            from . instruments.sensic_cu import SenSiCCU
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(SenSiCCU())
 
         try:
-            from instruments.K2100 import K2100
+            from . instruments.K2100 import K2100
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         else:
             instruments.append(K2100())
 
         try:
-            from instruments.time_boonton7200 import Boonton7200
+            from . instruments.time_boonton7200 import Boonton7200
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         #except WindowsError:
         #    pass
         else:
             instruments.append(Boonton7200())
 
         try:
-            from instruments.time_agilent_4284 import Agilent4284
+            from . instruments.time_agilent_4284 import Agilent4284
         except Exception as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.info('Error on import: %s, %s', type(e), e.msg)
         #except WindowsError:
         #    pass
         else:
@@ -225,7 +225,7 @@ class MeasureOverTimeTask(Task):
 
     def configure_new_instrument(self):
         self.data_units = []
-        for i in xrange(len(self.active_instrument.output_channels)):
+        for i in range(len(self.active_instrument.output_channels)):
             for x_unit in self.active_instrument.x_units.values():
                 self.data_units.append(self.active_instrument.output_channels[i] + x_unit)
             for y_unit in self.active_instrument.y_units.values():

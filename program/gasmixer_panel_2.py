@@ -99,7 +99,7 @@ class GasMixerPanel(HasTraits):
 
         self.subscriber = self.context.socket(zmq.SUB)
         self.subscriber.connect('tcp://localhost:5561')
-        self.subscriber.setsockopt(zmq.SUBSCRIBE, "")
+        self.subscriber.setsockopt(zmq.SUBSCRIBE, "".encode('ascii'))
         self.subscriber_poller = zmq.Poller()
         self.subscriber_poller.register(self.subscriber, zmq.POLLIN)
 

@@ -4,7 +4,7 @@ from traits.api import HasTraits, Range, \
     Unicode, Dict, Event, Bool, List
 from traitsui.api import View, Item, Group, Label
 
-from i_instrument import IInstrument
+from . i_instrument import IInstrument
 
 INFO_STRING = """
     First, select type of measurement (something over time or sweep type).

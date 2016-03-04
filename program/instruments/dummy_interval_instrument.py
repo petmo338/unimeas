@@ -1,4 +1,4 @@
-from i_instrument import IInstrument
+from . i_instrument import IInstrument
 from traits.api import HasTraits, Instance, Float, Dict, \
     List, Unicode, Str, Int, \
    Event, Bool

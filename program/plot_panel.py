@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from qtgraph_editor import QTGraphWidgetEditor
+from program.qtgraph_editor import QTGraphWidgetEditor
 from traits.api import HasTraits, Int, Str, Instance, Dict, Array
 from traitsui.api import Item, View, EnumEditor, HGroup, Label
-from instruments.i_instrument import IInstrument
+from program.instruments.i_instrument import IInstrument
 import pyqtgraph as pg
 import numpy as np
 import logging
@@ -49,7 +49,7 @@ class PlotPanel(HasTraits):
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
-        plot.sigRangeChanged.connect(self.rangeChanged)
+       #  plot.sigRangeChanged.connect(self.rangeChanged)
         return plot
 
     def rangeChanged(self, evt):
@@ -75,7 +75,7 @@ class PlotPanel(HasTraits):
         legendNames = [l.text for a,l in self.legend.items]
         for name in legendNames:
             self.legend.removeItem(name)
-        for i in xrange(len(self.instrument.enabled_channels)):
+        for i in range(len(self.instrument.enabled_channels)):
             if self.instrument.enabled_channels[i] == True:
                 self.plot_widget.addItem(self.plots[self.instrument.output_channels[i]])
 
@@ -92,7 +92,7 @@ class PlotPanel(HasTraits):
 
         self.plots = {}
         self.data = np.zeros(shape=(len(instrument.output_channels) * (len(instrument.x_units) + len(instrument.y_units)), DATA_LINES), dtype=np.float32)
-        for i in xrange(len(instrument.output_channels)):
+        for i in range(len(instrument.output_channels)):
             self.plots[instrument.output_channels[i]] = pg.PlotCurveItem(x=[0], y=[0],
                 pen = ({'color':COLOR_MAP[i], 'width':1}), name=instrument.output_channels[i])
         self.plot_increment = len(instrument.x_units) + len(instrument.y_units)

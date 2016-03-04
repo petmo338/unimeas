@@ -4,7 +4,7 @@ from pyface.tasks.api import TaskWindowLayout
 from traits.api import Bool, Instance, List, Property
 
 # Local imports.
-from unimeas_preferences import UnimeasPreferences
+from program.unimeas_preferences import UnimeasPreferences
 
 class UniMeasApplication(TasksApplication):
     """ The Unimeas Tasks application.

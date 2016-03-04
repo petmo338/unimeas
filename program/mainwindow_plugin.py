@@ -39,12 +39,12 @@ class MainWindowPlugin(Plugin):
         return [ 'file://' + filename ]
 
     def _preferences_panes_default(self):
-        from unimeas_preferences import UnimeasPreferencesPane
+        from program.unimeas_preferences import UnimeasPreferencesPane
         return [ UnimeasPreferencesPane ]
 
     def _tasks_default(self):
-        from measure_over_time_task import MeasureOverTimeTask
-        from measure_interval_task import MeasureIntervalTask
+        from program.measure_over_time_task import MeasureOverTimeTask
+        from program.measure_interval_task import MeasureIntervalTask
         return [ TaskFactory(id = 'sensorscience.unimeas.measureinterval',
                              name = 'Measure interval/ramp',
                              factory = MeasureIntervalTask),

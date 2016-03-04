@@ -8,7 +8,7 @@ from traits.api import cached_property, Instance, List, on_trait_change, \
     Property, Unicode
 
 # Local imports.
-from instruments.i_instrument import IInstrument
+from . instruments.i_instrument import IInstrument
 
 
 class InstrumentShowAction(Action):

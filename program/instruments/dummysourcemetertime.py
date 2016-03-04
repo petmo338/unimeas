@@ -9,9 +9,9 @@ from threading import Thread
 from time import sleep, time
 from numpy import random
 #import pdb
-import Queue
+import queue
 
-from i_instrument import IInstrument
+from . i_instrument import IInstrument
 
 class AcquisitionThread(Thread, HasTraits):
     """ Acquisition loop. """
@@ -93,7 +93,7 @@ class DummySourcemeterTime(HasTraits):
     output_unit = 0
     timebase = 0
     measurement_info = Dict()
-    queue = Queue.Queue()
+    queue = queue.Queue()
 
     parameter_group = Group(
         Item('mean_voltage'),

@@ -11,9 +11,9 @@ from serial.tools import list_ports
 from pyface.timer.api import Timer
 import numpy as np
 import threading
-import Queue
+import queue
 import numpy as np
-import generic_popup_message
+from . generic_popup_message import GenericPopupMessage
 import csv
 logger = logging.getLogger(__name__)
 BAUD_RATE = 115200
@@ -38,7 +38,7 @@ def pv_to_temp(pv, offset = 0.0):
     voltage = 5.0 * pv / 1024
     resistance = 91.5 + voltage / 0.019051
     
-    for i in xrange(len(Pt100) - 1):
+    for i in range(len(Pt100) - 1):
         if resistance < Pt100[i + 1]:
             return PT100_TABLE_STEP_DEG * ((resistance - Pt100[i]) / (Pt100[i + 1] - Pt100[i]) + i) + MIN_TEMP
     return MAX_TEMP
@@ -60,7 +60,7 @@ def pv_to_temp(pv, offset = 0.0):
     voltage = 5.0 * pv / 1024
     resistance = 91.5 + voltage / 0.019051
     
-    for i in xrange(len(Pt100) - 1):
+    for i in range(len(Pt100) - 1):
         if resistance < Pt100[i + 1]:
             return PT100_TABLE_STEP_DEG * ((resistance - Pt100[i]) / (Pt100[i + 1] - Pt100[i]) + i) + MIN_TEMP
     return MAX_TEMP
@@ -191,8 +191,8 @@ class TemperatureControlPanel(HasTraits):
     load = Button
     filename = File
 
-    set_temp_queue = Instance(Queue.Queue)
-    get_temp_queue = Instance(Queue.Queue)
+    set_temp_queue = Instance(queue.Queue)
+    get_temp_queue = Instance(queue.Queue)
 
 
     traits_view = View(HGroup(Item('selected_com_port',  label = 'Com port', \
@@ -412,14 +412,14 @@ class TemperatureControlPanel(HasTraits):
 #        logger.info('result %s, ser %s', result, ser)
         if result.find('OK') is 0:
             logger.info('Connection OK!')
-            generic_popup_message.GenericPopupMessage(message='Temperature controller found').edit_traits()
+            GenericPopupMessage(message='Temperature controller found').edit_traits()
             
         #result = ser.read(30)
         ser.close()
 
     def _save_fired(self):
         if self.filename is '':
-            generic_popup_message.GenericPopupMessage(message='No filename given').edit_traits()
+            GenericPopupMessage(message='No filename given').edit_traits()
             return
         filehandle = open(self.filename, "w", 1)
         fieldnames = self.table_entries[0].trait_get().keys()
@@ -433,7 +433,7 @@ class TemperatureControlPanel(HasTraits):
 
     def _load_fired(self):
         if self.filename is '':
-            generic_popup_message.GenericPopupMessage(message='No filename given').edit_traits()
+            GenericPopupMessage(message='No filename given').edit_traits()
             return
         filehandle = open(self.filename, "r", 1)
         reader = csv.DictReader(filehandle)

@@ -5,7 +5,7 @@ from traitsui.api import Item, View, Group,Handler, \
 from traitsui.table_column import NumericColumn
 from time import time
 import logging
-from instruments.i_instrument import IInstrument
+from program.instruments.i_instrument import IInstrument
 logger = logging.getLogger(__name__)
 
 class TableEntry(HasTraits):

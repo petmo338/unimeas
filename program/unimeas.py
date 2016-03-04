@@ -4,11 +4,11 @@ import logging
 # Plugin imports.
 from envisage.core_plugin import CorePlugin
 from envisage.ui.tasks.tasks_plugin import TasksPlugin
-from mainwindow_plugin import MainWindowPlugin
+from . mainwindow_plugin import MainWindowPlugin
 #from measurements_plugin import MeasurementsPlugin
 
 # Local imports.
-from unimeas_application import UniMeasApplication
+from . unimeas_application import UniMeasApplication
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)-2s %(name)-12s %(levelname)-8s %(message)s',

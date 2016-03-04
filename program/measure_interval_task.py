@@ -2,11 +2,11 @@ from pyface.tasks.action.api import SMenu, SMenuBar, DockPaneToggleGroup, TaskTo
 from pyface.tasks.api import Task, TaskLayout, Tabbed, PaneItem, Splitter, TraitsTaskPane
 from traits.api import List, Instance, on_trait_change
 from traitsui.api import View
-from generic_pane import GenericPane
-from instrument_help_pane import InstrumentHelpPane
-from instrument_show_group import InstrumentShowGroup
-from interval_plot_panel import IntervalPlotPanel
-from instruments.i_instrument import IInstrument
+from . generic_pane import GenericPane
+from . instrument_help_pane import InstrumentHelpPane
+from . instrument_show_group import InstrumentShowGroup
+from . interval_plot_panel import IntervalPlotPanel
+from . instruments.i_instrument import IInstrument
 import logging
 logger = logging.getLogger(__name__)
 
@@ -69,35 +69,35 @@ class MeasureIntervalTask(Task):
     def _instruments_default(self):
         instruments = []
         try:
-            from instruments.blank import Blank
+            from . instruments.blank import Blank
         except ImportError:
             pass
         else:
             instruments.append(Blank())
         
         try:
-            from instruments.dummy_interval_instrument import DummyIntervalInstrument
+            from . instruments.dummy_interval_instrument import DummyIntervalInstrument
         except ImportError as e:
             logger.warning('Unable to import DummyIntervalInstrument: %s', e)
             pass
         else:
             instruments.append(DummyIntervalInstrument())
         try:
-            from instruments.agilent_4284 import Agilent4284
+            from . instruments.agilent_4284 import Agilent4284
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
             pass
         else:
             instruments.append(Agilent4284())
         try:
-            from instruments.interval_sourcemeter import SourceMeter
+            from . instruments.interval_sourcemeter import SourceMeter
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
             pass
         else:
             instruments.append(SourceMeter())
         try:
-            from instruments.interval_ni6215 import NI6215
+            from . instruments.interval_ni6215 import NI6215
         except ImportError as e:
             logger.warning('Unable to import: %s', e)
             pass

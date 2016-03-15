@@ -81,7 +81,7 @@ class MeasureOverTimeTask(Task):
                                 name = self.panels[3].pane_name),
                 GenericPane(panel=self.panels[4],
                                 id = self.panels[4].pane_id,
-                                name = self.panels[4].pane_name),                 ]
+                                name = self.panels[4].pane_name),]
 
     def activated(self):
         self._update_active_instrument(None, None, None, None)

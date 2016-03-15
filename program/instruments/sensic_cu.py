@@ -11,7 +11,7 @@ from time import time, sleep
 from numpy import zeros, ones, linspace
 from pyface.timer.api import Timer
 
-from i_instrument import IInstrument
+from . i_instrument import IInstrument
 logger = logging.getLogger(__name__)
 
 

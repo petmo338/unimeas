@@ -1,5 +1,6 @@
 import logging
 import serial
+from serial.tools.list_ports import comports
 import os
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
     List, Unicode, Str, Int, on_trait_change, Event, Button
@@ -11,7 +12,7 @@ from time import time, sleep
 from numpy import zeros, ones
 from pyface.timer.api import Timer
 
-from i_instrument import IInstrument
+from . i_instrument import IInstrument
 logger = logging.getLogger(__name__)
 
 
@@ -85,7 +86,7 @@ class TGS2442_MOSLab(HasTraits):
                     pass
         else:
             # unix
-            for port in serial.list_ports.comports():
+            for port in comports():
                 l.append(port[0])
         return l
 

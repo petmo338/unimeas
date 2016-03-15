@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
-COLOR_MAP =[(255, 63, 0), (0, 63, 255), (63, 255, 0), (200, 200, 63),\
-            (255, 63, 255), (63, 255, 255), (160, 0, 0), (0, 0, 160),\
+COLOR_MAP = ['#ff6442','#8781d3','#fcf05f','#687f91','#00cfb6', '#0cc7d3',
+             (63, 255, 255), (160, 0, 0), (0, 0, 160),\
             (0, 160, 0), (0, 160, 160), (160, 160, 0), (160, 0, 160),\
             (255, 160, 160), (160, 160, 255), (160, 255, 160), (0, 0, 63)]
+
 
 SI_ACR = { 'Frequency':'Hz', 'Capacitance':'F', 'Resistance':u"\u2126", 'Current':'A', 'Voltage':'V'}
 class IntervalPlotPanel(HasTraits):
@@ -57,7 +58,7 @@ class IntervalPlotPanel(HasTraits):
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
-        #plot.sigRangeChanged.connect(self.rangeChanged)
+        plot.sigRangeChanged.connect(self.rangeChanged)
         plot.getViewBox().setAutoPan(x=False, y=False)
         return plot
 

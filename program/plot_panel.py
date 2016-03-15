@@ -11,8 +11,8 @@ pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
 DATA_LINES = 172800
-COLOR_MAP = [(255, 63, 0), (0, 63, 255), (63, 255, 0), (255, 255, 63),\
-            (255, 63, 255), (63, 255, 255), (160, 0, 0), (0, 0, 160),\
+COLOR_MAP = ['#ff6442','#8781d3','#fcf05f','#687f91','#00cfb6', '#0cc7d3',
+             (63, 255, 255), (160, 0, 0), (0, 0, 160),\
             (0, 160, 0), (0, 160, 160), (160, 160, 0), (160, 0, 160),\
             (255, 160, 160), (160, 160, 255), (160, 255, 160), (0, 0, 63)]
 
@@ -49,7 +49,7 @@ class PlotPanel(HasTraits):
         self.label.setPos(plot.getPlotItem().getViewBox().viewRect().right(), \
                 plot.getPlotItem().getViewBox().viewRect().top())
         self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
-       #  plot.sigRangeChanged.connect(self.rangeChanged)
+        plot.sigRangeChanged.connect(self.rangeChanged)
         return plot
 
     def rangeChanged(self, evt):
@@ -94,7 +94,7 @@ class PlotPanel(HasTraits):
         self.data = np.zeros(shape=(len(instrument.output_channels) * (len(instrument.x_units) + len(instrument.y_units)), DATA_LINES), dtype=np.float32)
         for i in range(len(instrument.output_channels)):
             self.plots[instrument.output_channels[i]] = pg.PlotCurveItem(x=[0], y=[0],
-                pen = ({'color':COLOR_MAP[i], 'width':1}), name=instrument.output_channels[i])
+                pen = ({'color':COLOR_MAP[i], 'width':2}), name=instrument.output_channels[i])
         self.plot_increment = len(instrument.x_units) + len(instrument.y_units)
         self.x_units = instrument.x_units
         self.y_units = instrument.y_units

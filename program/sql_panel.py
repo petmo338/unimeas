@@ -6,6 +6,7 @@ from generic_popup_message import GenericPopupMessage
 import csv
 import time
 import logging
+import tempfile
 logger = logging.getLogger(__name__)
 
 TABLE_NAME_PREPEND = 'm'
@@ -246,50 +247,59 @@ class SQLPanel(HasTraits):
         self.column_names = column_names
 
     def write_to_file(self, data):
-        string_data = []
-        for i in xrange(len(self.column_names)):
-                string_data.append('0')
+        data_list = [0] * len(self.column_names)
         for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]
                 for column in candidates:
                     column_index = self.column_names.index(column)
                     try:
-                        string_data[column_index] = str(data[channel][0][column[len(channel):]])
+                        data_list[column_index] = data[channel][0][column[len(channel):]]
                     except KeyError:
                         if data[channel][1] == dict():
                             break
-                        string_data[column_index] = str(data[channel][1][column[len(channel):]])
+                        data_list[column_index] = data[channel][1][column[len(channel):]]
 
-        if hasattr(self, 'csv_writer'):
-            self.csv_writer.writerow(string_data)
+        if self.save_to_file:
+            self.csv_writer.writerow(data_list)
+        if hasattr(self, 'backup_csv_writer'):
+            self.backup_csv_writer.writerow(data_list)
 
 
 #    @on_trait_change('instrument.sample_number')
     def add_data(self, data):
+        self.write_to_file(data)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
-        if self.save_to_file:
-            self.write_to_file(data)
+        
+
 
     def start_stop(self, running):
         self.running = running
-        if running and self.save_in_database:
-            if len(self.measurement_name) == 0:
-                GenericPopupMessage(message = 'No measurement selected').edit_traits()
-                self.save_in_database = False
-            else:
-                self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
-                    self.measurement_description)
+        if running:
+            self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
+            logger.info('Backup measurement log: %s', self.backup_log_file.name)
+            self.backup_csv_writer = csv.writer(self.backup_log_file, quoting=csv.QUOTE_NONNUMERIC)
+            self.backup_csv_writer.writerow(self.column_names)
 
-        if running and self.save_to_file:
-            try:
-                filehandle = open(self.filename, "a", 1)
-            except IOError:
-                logger.error('Unable to open file %s', self.filename)
-            else:
-                self.csv_writer = csv.writer(filehandle, dialect=csv.excel_tab)
-                self.csv_writer.writerow(self.column_names)
-            self.column_names = self.column_names
+            if self.save_in_database:
+                if len(self.measurement_name) == 0:
+                    GenericPopupMessage(message = 'No measurement selected').edit_traits()
+                    self.save_in_database = False
+                else:
+                    self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
+                        self.measurement_description)
+            if self.save_to_file:
+                try:
+                    self.filehandle = open(self.filename, "a", 1)
+                except IOError:
+                    logger.error('Unable to open file %s', self.filename)
+                else:
+                    self.csv_writer = csv.writer(self.filehandle, quoting=csv.QUOTE_NONNUMERIC)
+                    self.csv_writer.writerow(self.column_names)
+                self.column_names = self.column_names
+        else:
+            if self.save_to_file:
+                self.filehandle.close()
 #        if not running and self.save_to_file:
 #            del self.csv_writer
 

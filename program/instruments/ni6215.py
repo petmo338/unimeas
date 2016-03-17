@@ -184,7 +184,7 @@ class NI6215(HasTraits):
     value_ai2 = Float
     value_ai3 = Float
 
-    synced_acqusistion = Bool(True)
+    synced_acqusistion = Bool(False)
 
     data_acquired = Bool(False)
     data = List(Float)
@@ -226,7 +226,7 @@ class NI6215(HasTraits):
                                 Item('value_ai1', style = 'readonly'),
                                 Item('value_ai2', style = 'readonly'),
                                 Item('value_ai3', style = 'readonly')),
-                        Item('synced_acqusistion'),
+                        Item('synced_acqusistion', enabled_when='false'),
                         Item('start_stop', label = 'Start/Stop Acqusistion',
                                 editor = ButtonEditor(label_value='button_label')),\
                                 handler=NI6215Handler)

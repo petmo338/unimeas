@@ -139,6 +139,7 @@ class SourceMeter(HasTraits):
         self.button_label = 'Stop'
         self.sample_nr = 0
         self.running = True
+        self.current_limit_exceeded = False
         self.instrument_init()
         length = np.abs(self.stop_voltage - self.start_voltage) / self.step_voltage
         self.output_values = np.divide(np.array(xrange(int(length) + 1)), length)

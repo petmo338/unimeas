@@ -461,9 +461,9 @@ class TemperatureControlPanel(HasTraits):
 
 
     def _com_ports_list_default(self):
-        import serial.tools as st
+        import serial.tools.list_ports as lp
         l = []
-        for p in st.list_ports.grep('Arduino'):
+        for p in lp.grep('Arduino'):
             l.append(p[0])
         return l
 

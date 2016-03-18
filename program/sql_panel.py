@@ -7,6 +7,7 @@ import csv
 import time
 import logging
 import tempfile
+import pg8000
 logger = logging.getLogger(__name__)
 
 TABLE_NAME_PREPEND = 'm'
@@ -41,10 +42,8 @@ class SQLWrapper():
     table_name = ''
 
     def initialize(self):
-        from pg8000 import DBAPI
-        self.DBAPI = DBAPI
         try:
-            self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, \
+            self.conn =  pg8000.connect(host=self.SERVER_HOST, \
                 user=self.USER, password=self.PASSWORD, database='postgres')
         except:
             return list()
@@ -52,7 +51,6 @@ class SQLWrapper():
         self.cursor = self.conn.cursor()
         self.cursor.execute('SELECT datname FROM pg_database WHERE datistemplate = \
                             false AND datname != \'postgres\' ')
-#        self.conn.commit()
         result = self.cursor.fetchall()
         retval = list()
         for user in result:
@@ -63,12 +61,12 @@ class SQLWrapper():
         self.cursor.close()
         self.conn.close()
         try:
-            self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, user=self.USER, \
+            self.conn =  pg8000.connect(host=self.SERVER_HOST, user=self.USER, \
                 password=self.PASSWORD, database=str(db))
         except:
             return False
-        self.DBAPI.paramstyle = 'numeric'
-        self.conn.autocommit = True
+        pg8000.paramstyle = 'numeric'
+        self.conn.autocommit = False
         self.cursor = self.conn.cursor()
         return True
 
@@ -77,10 +75,10 @@ class SQLWrapper():
         query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
             + self.USER + '\';'
         self.cursor.execute(query)
-        self.conn.commit()
         try:
             result = self.cursor.fetchall()
-        except:
+        except Exception as e:
+            logger.error('get_measurements returned %s', e)
             return list()
         retval = list()
         for table in result:

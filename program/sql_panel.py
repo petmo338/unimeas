@@ -122,7 +122,7 @@ class SQLWrapper():
 
     def _create_table(self, column_names, name):
 #        logger.warning('column_names: %s, name %s', column_names, name)
-        query = "CREATE TABLE " + name + " (uid SERIAL, "
+        query = "CREATE TABLE " + name + " (uid SERIAL, ts timestamp, "
         query = query + " REAL ,".join(column_names) + " REAL)"
         try:
             #self.cursor.execute("CREATE TABLE \'%s\'  (uid SERIAL, %s REAL)", (name, ' REAL, '.join(column_names),))
@@ -141,7 +141,7 @@ class SQLWrapper():
             string_data = []
             for i in xrange(len(self.column_names)):
                 string_data.append('DEFAULT')
-            query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT "
+            query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT, \'now\'"
             #query = ''
             for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]
@@ -156,7 +156,7 @@ class SQLWrapper():
                         string_data[column_index] = str(data[channel][1][column[len(channel):]])
 
             for value in string_data:
-                query = query + " ," + value
+                query = query + ", " + value
             query = query + ")"
             try:
                 self.cursor.execute(query)

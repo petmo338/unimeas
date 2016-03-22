@@ -275,18 +275,15 @@ class SQLPanel(HasTraits):
         except ConfigParser.NoSectionError as e:
             system = 'SystemNoSet'
             logger.warning('No preferences.ini found: %s', e)
+        d={}
+        for v in data.values():
+            d.update(v[1])
         influx = [{
             "measurement": system,
             "tags": {
                 "channel": data.keys()[0],
                 },
-            "fields":
-                {
-                    data[data.keys()[0]][0].keys()[0]: data[data.keys()[0]][0].values()[0],
-                    data[data.keys()[0]][0].keys()[1]: data[data.keys()[0]][0].values()[1],
-                    data[data.keys()[0]][1].keys()[0]: data[data.keys()[0]][1].values()[0],
-                    data[data.keys()[0]][1].keys()[1]: data[data.keys()[0]][1].values()[1],
-                }
+            "fields": d,
             }]
         try:
             self.conn_influx.write_points(influx)

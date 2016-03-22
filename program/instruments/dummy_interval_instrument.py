@@ -22,6 +22,7 @@ class DummyIntervalInstrument(HasTraits):
 #    implements(IInstrument)
 
     name = Unicode('DummyIntervalInstrument')
+    model = Unicode('DummyInterval')
 
     #x_units = Dict
     #y_units = Dict
@@ -144,6 +145,14 @@ class DummyIntervalInstrument(HasTraits):
 
     def _measurement_mode_default(self):
         return 0
+
+    def get_nr_of_samples(self):
+        if self.measurement_mode == 0:
+            return (self.stop_frequency - self.start_frequency) / self.step_frequency
+        elif self.measurement_mode == 1:
+            return (self.stop_voltage - self.start_voltage) / self.step_voltage
+        else:
+            return 1
 
 if __name__ == '__main__':
     l = logging.getLogger()

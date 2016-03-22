@@ -7,6 +7,7 @@ from instrument_help_pane import InstrumentHelpPane
 from instrument_show_group import InstrumentShowGroup
 from interval_plot_panel import IntervalPlotPanel
 from instruments.i_instrument import IInstrument
+from sql_panel_interval import SQLPanel
 import logging
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,11 @@ class MeasureIntervalTask(Task):
                  InstrumentHelpPane(instrument=self.active_instrument),
                  GenericPane(panel=self.panels[0],
                                 id = self.panels[0].pane_id,
-                                name = self.panels[0].pane_name)]
+                                name = self.panels[0].pane_name),
+                 GenericPane(panel=self.panels[1],
+                                id = self.panels[1].pane_id,
+                                name = self.panels[1].pane_name)
+                 ]
 
     def initialized(self):
         self.update_active_instrument(self, 'from_init', None, self.active_instrument)
@@ -117,6 +122,11 @@ class MeasureIntervalTask(Task):
         panels.append(self.plot_panel)
         self.start_stop_subscribers.append(self.plot_panel)
         self.data_subscribers.append(self.plot_panel)
+        self.sql_panel = SQLPanel()
+        panels.append(self.sql_panel)
+        self.start_stop_subscribers.append(panels[-1])
+        self.data_subscribers.append(panels[-1])
+
         return panels
 
     @on_trait_change('active_instrument')
@@ -125,6 +135,7 @@ class MeasureIntervalTask(Task):
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.on_trait_change(self._configure_plots, 'active_instrument.enabled_channels[]')
         self.plot_panel.configure_plots(self.active_instrument)
+        self.sql_panel.set_active_instrument(new)
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument

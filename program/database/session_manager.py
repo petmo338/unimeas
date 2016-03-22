@@ -63,8 +63,10 @@ class SessionManager(object):
     def get_users(self):
         return self.session.query(User).order_by(User.id).all()
 
-    def get_measurement_classes(self):
-        return self.session.query(MeasurementClass).order_by(MeasurementClass.id).all()
+    def get_measurement_classes(self, **kwargs):
+        if kwargs is None:
+            return self.session.query(MeasurementClass).order_by(MeasurementClass.id).all()
+        return self.session.query(MeasurementClass).order_by(MeasurementClass.id).filter_by(**kwargs)
 
     def get_instruments(self):
         return self.session.query(Instrument).order_by(Instrument.model).all()

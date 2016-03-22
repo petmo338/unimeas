@@ -8,9 +8,17 @@ import time
 import logging
 import tempfile
 import pg8000
+import ConfigParser
+
+from influxdb import InfluxDBClient
+
 logger = logging.getLogger(__name__)
 
 TABLE_NAME_PREPEND = 'm'
+DATABASE_SERVER_HOST = 'pc15389.sensor.lab'
+DATABASE_USER = 'sensor'
+DATABASE_PASSWORD = 'sensor'
+INFLUX_DB_DATABASE = 'sensorlab'
 
 class CreateMeasurementPopup(Handler):
     measurement_name = Str
@@ -35,16 +43,13 @@ class CreateMeasurementPopup(Handler):
 
 class SQLWrapper():
 
-    SERVER_HOST = 'pc15389.sensor.lab'
-#    SERVER_HOST = 'localhost'
-    USER = 'sensor'
-    PASSWORD = 'sensor'
+
     table_name = ''
 
     def initialize(self):
         try:
-            self.conn =  pg8000.connect(host=self.SERVER_HOST, \
-                user=self.USER, password=self.PASSWORD, database='postgres')
+            self.conn =  pg8000.connect(host=DATABASE_SERVER_HOST, \
+                user=DATABASE_USER, password=DATABASE_PASSWORD, database='postgres')
         except:
             return list()
 
@@ -61,8 +66,8 @@ class SQLWrapper():
         self.cursor.close()
         self.conn.close()
         try:
-            self.conn =  pg8000.connect(host=self.SERVER_HOST, user=self.USER, \
-                password=self.PASSWORD, database=str(db))
+            self.conn =  pg8000.connect(host=DATABASE_SERVER_HOST, user=DATABASE_USER, \
+                password=DATABASE_PASSWORD, database=str(db))
         except:
             return False
         pg8000.paramstyle = 'numeric'
@@ -71,9 +76,8 @@ class SQLWrapper():
         return True
 
     def get_measurements(self):
-
         query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
-            + self.USER + '\';'
+            + DATABASE_USER + '\';'
         self.cursor.execute(query)
         try:
             result = self.cursor.fetchall()
@@ -161,7 +165,6 @@ class SQLWrapper():
                 self.conn.commit()
             except Exception as e:
                 logger.error('SQL error %s', e)
-#            logger.info('query: %s', query)
 
 
 class SQLPanel(HasTraits):
@@ -172,7 +175,7 @@ class SQLPanel(HasTraits):
     pane_id = Str('sensorscience.unimeas.sql_pane')
 
     database_wrapper = Instance(SQLWrapper)
-#    instrument = Instance(IInstrument)
+    config = Instance(ConfigParser.ConfigParser)
     selected_user = Str
     new_measurement = Button
     measurement_name = Unicode
@@ -181,7 +184,6 @@ class SQLPanel(HasTraits):
 
     save_to_file = Bool
     running = Bool
-#    filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
     filename = File
     available_users = List(Unicode)
     available_measurements = List(Unicode)
@@ -218,6 +220,10 @@ class SQLPanel(HasTraits):
     def _measurement_name_default(self):
         return ''
 
+    def _config_default(self):
+        c = ConfigParser.ConfigParser()
+        logger.info('Config file %s', c.read('preferences.ini'))
+        return c
 
     def _selected_user_changed(self, old, new):
         if new == '':
@@ -262,10 +268,27 @@ class SQLPanel(HasTraits):
         if hasattr(self, 'backup_csv_writer'):
             self.backup_csv_writer.writerow(data_list)
 
-
-#    @on_trait_change('instrument.sample_number')
     def add_data(self, data):
         self.write_to_file(data)
+        try:
+            system = self.config.get('General', 'GasMixerSystem')
+        except ConfigParser.NoSectionError as e:
+            system = 'SystemNoSet'
+            logger.warning('No preferences.ini found: %s', e)
+        d={}
+        for v in data.values():
+            d.update(v[1])
+        influx = [{
+            "measurement": system,
+            "tags": {
+                "channel": data.keys()[0],
+                },
+            "fields": d,
+            }]
+        try:
+            self.conn_influx.write_points(influx)
+        except Exception as e:
+            logger.warning('%', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
         
@@ -274,6 +297,10 @@ class SQLPanel(HasTraits):
     def start_stop(self, running):
         self.running = running
         if running:
+            try:
+                self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
+            except Exception as e:
+                logger.warning('Real time plot connection failed: %s', e)
             self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
             logger.info('Backup measurement log: %s', self.backup_log_file.name)
             self.backup_csv_writer = csv.writer(self.backup_log_file, quoting=csv.QUOTE_NONNUMERIC)

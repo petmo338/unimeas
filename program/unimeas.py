@@ -22,6 +22,9 @@ formatter = logging.Formatter('%(asctime)-2s %(name)-12s: %(levelname)-8s %(mess
 console.setFormatter(formatter)
 # add the handler to the root logger
 logging.getLogger('').addHandler(console)
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(logging.WARNING)
+requests_log.propagate = True
 app = None
 
 def main(argv):

@@ -13,6 +13,7 @@ import ConfigParser
 from influxdb import InfluxDBClient
 
 logger = logging.getLogger(__name__)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 TABLE_NAME_PREPEND = 'm'
 DATABASE_SERVER_HOST = 'pc15389.sensor.lab'

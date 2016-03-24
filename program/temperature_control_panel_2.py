@@ -17,10 +17,10 @@ import csv
 logger = logging.getLogger(__name__)
 
 
-PID_configurations = {  'Normal TO-8': {'P': 5.821729083089657, 'I': 1.626933965977756, 'D': 1.332938348953647, 'N': 1.448274562118016},
-                        'Sensic M18 ceramic': {'P': 9.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021},
-                        'L-A Cap': {'P': 8.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021},
-                        'Small mass': {'P': 2.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021}}
+PID_configurations = {  'Normal TO-8': {'P': 5.821729083089657, 'I': 1.626933965977756, 'D': 1.332938348953647, 'N': 1.448274562118016, 'pwm_table_index': 0},
+                        'Sensic M18 ceramic': {'P': 9.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 1},
+                        'L-A Cap': {'P': 8.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0},
+                        'Small mass': {'P': 2.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0}}
 
 BAUD_RATE = 115200
 POLL_INTERVAL = 200.0
@@ -175,6 +175,7 @@ class TemperatureControlPanel(HasTraits):
     current_temp = Float
     actual_temp = Float
     process_value = Float
+    adjusted_pv = Float
     PID_out = Float
     pwm_value = Int
     max31865_ctrl = Int
@@ -194,6 +195,7 @@ class TemperatureControlPanel(HasTraits):
     pid_I = Float(0)
     pid_D = Float(0)
     pid_N = Float(0)
+    pwm_table_index = Int(0)
     use_direct_pwm = Bool(False)
     pwm_set_direct = Int(0)
 
@@ -245,6 +247,7 @@ class TemperatureControlPanel(HasTraits):
             HGroup(
                 VGroup(Item('actual_temp', style = 'readonly', format_str = '%.2f'),
                     Item('process_value', style = 'readonly', format_str = '%.2f'),  
+                    Item('adjusted_pv', style = 'readonly', format_str = '%.2f'),  
                     Item('setpoint', style = 'readonly', format_str = '%.2f')),
                 spring,
                 VGroup(Item('pwm_value', style = 'readonly', format_str = '%d'), 
@@ -273,6 +276,7 @@ class TemperatureControlPanel(HasTraits):
                 VGroup(Item('pid_I', label = 'PID I', format_str = '%.7f')),
                 VGroup(Item('pid_D', label = 'PID D',  format_str = '%.7f')),
                 VGroup(Item('pid_N', label = 'PID Nd',  format_str = '%.7f')),
+                VGroup(Item('pwm_table_index', label = 'tbl_idx')),
                 HGroup(Item('use_direct_pwm'), Item('pwm_set_direct', show_label = False)),
                 Item('update_pid', enabled_when = 'connected'),
                 Item('save_detailed_log', enabled_when = 'connected'),
@@ -313,11 +317,12 @@ class TemperatureControlPanel(HasTraits):
     def _RT_resistance_setpoint_changed(self, new):
         self.resistance_setpoint = temp_to_resistance(self.temp_setpoint, new)
 
-    def _selected_pid_configuration_changed(self):
-        self.pid_P = PID_configurations[g.selected_pid_configuration]['P']
-        self.pid_I = PID_configurations[g.selected_pid_configuration]['I']
-        self.pid_D = PID_configurations[g.selected_pid_configuration]['D']
-        self.pid_N = PID_configurations[g.selected_pid_configuration]['N']
+    def _selected_pid_configuration_changed(self, new):
+        self.pid_P = PID_configurations[new]['P']
+        self.pid_I = PID_configurations[new]['I']
+        self.pid_D = PID_configurations[new]['D']
+        self.pid_N = PID_configurations[new]['N']
+        self.pwm_table_index = PID_configurations[new]['pwm_table_index']
 
 
     def _available_pid_configurations_default(self):
@@ -349,6 +354,7 @@ class TemperatureControlPanel(HasTraits):
             self.get_parameters_queue.task_done()
             self.actual_temp = resistance_to_temp(values[0], values[7])
             self.process_value = values[0]
+            self.adjusted_pv = values[0]*(109.7/values[7])
             self.PID_out = values[1]
             self.pwm_value = values[2]
             self.max31856_ctrl = values[3]
@@ -468,14 +474,14 @@ class TemperatureControlPanel(HasTraits):
         return l
 
     def _set_parameters_fired(self):
-        self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 0, 0, 0, 0,
+        self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 0, 0, 0, self.pwm_table_index,
             self.resistance_setpoint, self.supply_voltage_setpoint, 
             self.RT_resistance_setpoint, 0, 0))
 
     def _update_pid_fired(self):
         self.set_parameters_queue.put_nowait(struct.pack('<c4f', 'p', self.pid_P, self.pid_I, self.pid_D, self.pid_N))
         self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 
-            int(self.use_direct_pwm), 0, self.pwm_set_direct, 0, self.resistance_setpoint, 
+            int(self.use_direct_pwm), 0, self.pwm_set_direct, self.pwm_table_index, self.resistance_setpoint, 
             self.supply_voltage_setpoint, self.RT_resistance_setpoint, 0, 0))
         self.update_PID_values = 3
 

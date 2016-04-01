@@ -129,6 +129,10 @@ class SenSiCCU(HasTraits):
             self.timer = Timer.singleShot(500, self.add_data)
             
     
+    def _calibrate_temp_fired(self):
+        self.timer = None
+        
+    
     def _enabled_channels_default(self):
         return [self.drain0, self.drain1]
 
@@ -154,8 +158,19 @@ class SenSiCCU(HasTraits):
     def _refresh_list_fired(self):
         self._available_devices = self.__available_ports_default()
 
-    def _portname_changed(self):
-        self.serialport = None
+    def _portname_changed(self, new):
+        if new is '':
+            return
+        if self.serialport != None:
+            self.serialport.close()
+        try:
+            self.serialport = serial.Serial(self.portname, 115200, timeout = 0.1)
+        except Exception as e:
+            logger.error(e)
+            return
+        #self.serialport.open()
+        self.serialport.flushInput()
+        self.timer = Timer.singleShot(self.sample_interval, self.add_data)
 
     def add_data(self):
         if not self.running:
@@ -166,10 +181,11 @@ class SenSiCCU(HasTraits):
         self.serialport.readinto(self.serial_response)
         d = self._parse_data(self.response_remainder +self.serial_response)
         data_dict = dict()
-        for entry in d:
-            data_dict[self.output_channels[0]] = entry[0]
-            data_dict[self.output_channels[1]] = entry[1]
-            self.acquired_data.append(data_dict)
+        if self.running is True:
+            for entry in d:
+                data_dict[self.output_channels[0]] = entry[0]
+                data_dict[self.output_channels[1]] = entry[1]
+                self.acquired_data.append(data_dict)
             
         #logger.debug(data_dict)
         
@@ -263,7 +279,7 @@ class SenSiCCU(HasTraits):
             self.serialport.open()
         self.serialport.flushInput()
 #        self.serialport.write('a')
-        self.timer = Timer.singleShot(self.sample_interval, self.add_data)
+#        self.timer = Timer.singleShot(self.sample_interval, self.add_data)
 
 
     def stop(self):

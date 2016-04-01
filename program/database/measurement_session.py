@@ -2,7 +2,7 @@ __author__ = 'petmo_000'
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Table
 from sqlalchemy.sql import functions, text
 from sqlalchemy.ext.compiler import compiles
-from database.base import Base
+from base import Base
 import logging
 
 logger = logging.getLogger(__name__)

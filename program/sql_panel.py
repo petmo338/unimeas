@@ -6,9 +6,27 @@ from generic_popup_message import GenericPopupMessage
 import csv
 import time
 import logging
+import tempfile
+import pg8000
+import ConfigParser
+
 logger = logging.getLogger(__name__)
 
+try:
+    from influxdb import InfluxDBClient
+except ImportError as e:
+    logger.warning(e)
+    USE_INFLUX_DB_LOGGING = False
+else:
+    USE_INFLUX_DB_LOGGING = True
+    
+    
+
 TABLE_NAME_PREPEND = 'm'
+DATABASE_SERVER_HOST = 'pc15389.sensor.lab'
+DATABASE_USER = 'sensor'
+DATABASE_PASSWORD = 'sensor'
+INFLUX_DB_DATABASE = 'sensorlab'
 
 class CreateMeasurementPopup(Handler):
     measurement_name = Str
@@ -33,25 +51,19 @@ class CreateMeasurementPopup(Handler):
 
 class SQLWrapper():
 
-    SERVER_HOST = 'pc15389.sensor.lab'
-#    SERVER_HOST = 'localhost'
-    USER = 'sensor'
-    PASSWORD = 'sensor'
+
     table_name = ''
 
     def initialize(self):
-        from pg8000 import DBAPI
-        self.DBAPI = DBAPI
         try:
-            self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, \
-                user=self.USER, password=self.PASSWORD, database='postgres')
+            self.conn =  pg8000.connect(host=DATABASE_SERVER_HOST, \
+                user=DATABASE_USER, password=DATABASE_PASSWORD, database='postgres')
         except:
             return list()
 
         self.cursor = self.conn.cursor()
         self.cursor.execute('SELECT datname FROM pg_database WHERE datistemplate = \
                             false AND datname != \'postgres\' ')
-#        self.conn.commit()
         result = self.cursor.fetchall()
         retval = list()
         for user in result:
@@ -62,24 +74,23 @@ class SQLWrapper():
         self.cursor.close()
         self.conn.close()
         try:
-            self.conn =  self.DBAPI.connect(host=self.SERVER_HOST, user=self.USER, \
-                password=self.PASSWORD, database=str(db))
+            self.conn =  pg8000.connect(host=DATABASE_SERVER_HOST, user=DATABASE_USER, \
+                password=DATABASE_PASSWORD, database=str(db))
         except:
             return False
-        self.DBAPI.paramstyle = 'numeric'
-        self.conn.autocommit = True
+        pg8000.paramstyle = 'numeric'
+        self.conn.autocommit = False
         self.cursor = self.conn.cursor()
         return True
 
     def get_measurements(self):
-
         query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
-            + self.USER + '\';'
+            + DATABASE_USER + '\';'
         self.cursor.execute(query)
-        self.conn.commit()
         try:
             result = self.cursor.fetchall()
-        except:
+        except Exception as e:
+            logger.error('get_measurements returned %s', e)
             return list()
         retval = list()
         for table in result:
@@ -121,7 +132,7 @@ class SQLWrapper():
 
     def _create_table(self, column_names, name):
 #        logger.warning('column_names: %s, name %s', column_names, name)
-        query = "CREATE TABLE " + name + " (uid SERIAL, "
+        query = "CREATE TABLE " + name + " (uid SERIAL, ts timestamp, "
         query = query + " REAL ,".join(column_names) + " REAL)"
         try:
             #self.cursor.execute("CREATE TABLE \'%s\'  (uid SERIAL, %s REAL)", (name, ' REAL, '.join(column_names),))
@@ -140,7 +151,7 @@ class SQLWrapper():
             string_data = []
             for i in xrange(len(self.column_names)):
                 string_data.append('DEFAULT')
-            query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT "
+            query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT, \'now\'"
             #query = ''
             for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]
@@ -155,14 +166,13 @@ class SQLWrapper():
                         string_data[column_index] = str(data[channel][1][column[len(channel):]])
 
             for value in string_data:
-                query = query + " ," + value
+                query = query + ", " + value
             query = query + ")"
             try:
                 self.cursor.execute(query)
                 self.conn.commit()
             except Exception as e:
                 logger.error('SQL error %s', e)
-#            logger.info('query: %s', query)
 
 
 class SQLPanel(HasTraits):
@@ -173,7 +183,7 @@ class SQLPanel(HasTraits):
     pane_id = Str('sensorscience.unimeas.sql_pane')
 
     database_wrapper = Instance(SQLWrapper)
-#    instrument = Instance(IInstrument)
+    config = Instance(ConfigParser.ConfigParser)
     selected_user = Str
     new_measurement = Button
     measurement_name = Unicode
@@ -182,7 +192,6 @@ class SQLPanel(HasTraits):
 
     save_to_file = Bool
     running = Bool
-#    filename = Str('Z:\\Lab Users\\MY_NAME\\MEASUREMENT_NAME')
     filename = File
     available_users = List(Unicode)
     available_measurements = List(Unicode)
@@ -219,6 +228,10 @@ class SQLPanel(HasTraits):
     def _measurement_name_default(self):
         return ''
 
+    def _config_default(self):
+        c = ConfigParser.ConfigParser()
+        logger.info('Config file %s', c.read('preferences.ini'))
+        return c
 
     def _selected_user_changed(self, old, new):
         if new == '':
@@ -246,50 +259,83 @@ class SQLPanel(HasTraits):
         self.column_names = column_names
 
     def write_to_file(self, data):
-        string_data = []
-        for i in xrange(len(self.column_names)):
-                string_data.append('0')
+        data_list = [0] * len(self.column_names)
         for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]
                 for column in candidates:
                     column_index = self.column_names.index(column)
                     try:
-                        string_data[column_index] = str(data[channel][0][column[len(channel):]])
+                        data_list[column_index] = data[channel][0][column[len(channel):]]
                     except KeyError:
                         if data[channel][1] == dict():
                             break
-                        string_data[column_index] = str(data[channel][1][column[len(channel):]])
+                        data_list[column_index] = data[channel][1][column[len(channel):]]
 
-        if hasattr(self, 'csv_writer'):
-            self.csv_writer.writerow(string_data)
+        if self.save_to_file:
+            self.csv_writer.writerow(data_list)
+        if hasattr(self, 'backup_csv_writer'):
+            self.backup_csv_writer.writerow(data_list)
 
-
-#    @on_trait_change('instrument.sample_number')
     def add_data(self, data):
+        self.write_to_file(data)
+        if USE_INFLUX_DB_LOGGING:
+            try:
+                system = self.config.get('General', 'GasMixerSystem')
+            except ConfigParser.NoSectionError as e:
+                system = 'SystemNoSet'
+                logger.warning('No preferences.ini found: %s', e)
+            d={}
+            for v in data.values():
+                d.update(v[1])
+            influx = [{
+                "measurement": system,
+                "tags": {
+                    "channel": data.keys()[0],
+                    },
+                "fields": d,
+                }]
+            try:
+                self.conn_influx.write_points(influx)
+            except Exception as e:
+                logger.warning('%', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
-        if self.save_to_file:
-            self.write_to_file(data)
+        
+
 
     def start_stop(self, running):
         self.running = running
-        if running and self.save_in_database:
-            if len(self.measurement_name) == 0:
-                GenericPopupMessage(message = 'No measurement selected').edit_traits()
-                self.save_in_database = False
-            else:
-                self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
-                    self.measurement_description)
+        if running:
+            if USE_INFLUX_DB_LOGGING:
+                try:
+                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
+                except Exception as e:
+                    logger.warning('Real time plot connection failed: %s', e)
+                    
+            self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
+            logger.info('Backup measurement log: %s', self.backup_log_file.name)
+            self.backup_csv_writer = csv.writer(self.backup_log_file, quoting=csv.QUOTE_NONNUMERIC)
+            self.backup_csv_writer.writerow(self.column_names)
 
-        if running and self.save_to_file:
-            try:
-                filehandle = open(self.filename, "a", 1)
-            except IOError:
-                logger.error('Unable to open file %s', self.filename)
-            else:
-                self.csv_writer = csv.writer(filehandle, dialect=csv.excel_tab)
-                self.csv_writer.writerow(self.column_names)
-            self.column_names = self.column_names
+            if self.save_in_database:
+                if len(self.measurement_name) == 0:
+                    GenericPopupMessage(message = 'No measurement selected').edit_traits()
+                    self.save_in_database = False
+                else:
+                    self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
+                        self.measurement_description)
+            if self.save_to_file:
+                try:
+                    self.filehandle = open(self.filename, "a", 1)
+                except IOError:
+                    logger.error('Unable to open file %s', self.filename)
+                else:
+                    self.csv_writer = csv.writer(self.filehandle, quoting=csv.QUOTE_NONNUMERIC)
+                    self.csv_writer.writerow(self.column_names)
+                self.column_names = self.column_names
+        else:
+            if self.save_to_file:
+                self.filehandle.close()
 #        if not running and self.save_to_file:
 #            del self.csv_writer
 

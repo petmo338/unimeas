@@ -226,7 +226,8 @@ class SourceMeter(HasTraits):
     def _onTimer(self):
         self.sample_number += 1
         data = [self.sample_number, time() - self.start_time]
-        values = self.instrument.query_ascii_values('print(smua.measure.iv())')
+        resp = self.instrument.query('print(smua.measure.iv())')
+	values = [float(f) for f in resp.split()]
         data.append(values[1])
         data.append(values[0])
         data.append(values[1]/values[0])

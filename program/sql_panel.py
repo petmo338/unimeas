@@ -10,9 +10,17 @@ import tempfile
 import pg8000
 import ConfigParser
 
-from influxdb import InfluxDBClient
-
 logger = logging.getLogger(__name__)
+
+try:
+    from influxdb import InfluxDBClient
+except ImportError as e:
+    logger.warning(e)
+    USE_INFLUX_DB_LOGGING = False
+else:
+    USE_INFLUX_DB_LOGGING = True
+    
+    
 
 TABLE_NAME_PREPEND = 'm'
 DATABASE_SERVER_HOST = 'pc15389.sensor.lab'
@@ -270,25 +278,26 @@ class SQLPanel(HasTraits):
 
     def add_data(self, data):
         self.write_to_file(data)
-        try:
-            system = self.config.get('General', 'GasMixerSystem')
-        except ConfigParser.NoSectionError as e:
-            system = 'SystemNoSet'
-            logger.warning('No preferences.ini found: %s', e)
-        d={}
-        for v in data.values():
-            d.update(v[1])
-        influx = [{
-            "measurement": system,
-            "tags": {
-                "channel": data.keys()[0],
-                },
-            "fields": d,
-            }]
-        try:
-            self.conn_influx.write_points(influx)
-        except Exception as e:
-            logger.warning('%', e)
+        if USE_INFLUX_DB_LOGGING:
+            try:
+                system = self.config.get('General', 'GasMixerSystem')
+            except ConfigParser.NoSectionError as e:
+                system = 'SystemNoSet'
+                logger.warning('No preferences.ini found: %s', e)
+            d={}
+            for v in data.values():
+                d.update(v[1])
+            influx = [{
+                "measurement": system,
+                "tags": {
+                    "channel": data.keys()[0],
+                    },
+                "fields": d,
+                }]
+            try:
+                self.conn_influx.write_points(influx)
+            except Exception as e:
+                logger.warning('%', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
         
@@ -297,10 +306,12 @@ class SQLPanel(HasTraits):
     def start_stop(self, running):
         self.running = running
         if running:
-            try:
-                self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
-            except Exception as e:
-                logger.warning('Real time plot connection failed: %s', e)
+            if USE_INFLUX_DB_LOGGING:
+                try:
+                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
+                except Exception as e:
+                    logger.warning('Real time plot connection failed: %s', e)
+                    
             self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
             logger.info('Backup measurement log: %s', self.backup_log_file.name)
             self.backup_csv_writer = csv.writer(self.backup_log_file, quoting=csv.QUOTE_NONNUMERIC)

@@ -7,7 +7,7 @@ from instrument_help_pane import InstrumentHelpPane
 from instrument_show_group import InstrumentShowGroup
 from interval_plot_panel import IntervalPlotPanel
 from instruments.i_instrument import IInstrument
-from sql_panel_interval import SQLPanel
+#from sql_panel_interval import SQLPanel
 import logging
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class MeasureIntervalTask(Task):
                  GenericPane(panel=self.panels[0],
                                 id = self.panels[0].pane_id,
                                 name = self.panels[0].pane_name),
-                 GenericPane(panel=self.panels[1],
-                                id = self.panels[1].pane_id,
-                                name = self.panels[1].pane_name)
+#                 GenericPane(panel=self.panels[1],
+#                                id = self.panels[1].pane_id,
+#                                name = self.panels[1].pane_name)
                  ]
 
     def initialized(self):
@@ -122,10 +122,10 @@ class MeasureIntervalTask(Task):
         panels.append(self.plot_panel)
         self.start_stop_subscribers.append(self.plot_panel)
         self.data_subscribers.append(self.plot_panel)
-        self.sql_panel = SQLPanel()
-        panels.append(self.sql_panel)
-        self.start_stop_subscribers.append(panels[-1])
-        self.data_subscribers.append(panels[-1])
+#        self.sql_panel = SQLPanel()
+#        panels.append(self.sql_panel)
+#        self.start_stop_subscribers.append(panels[-1])
+#        self.data_subscribers.append(panels[-1])
 
         return panels
 

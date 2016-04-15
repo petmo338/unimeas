@@ -297,7 +297,7 @@ class SQLPanel(HasTraits):
             try:
                 self.conn_influx.write_points(influx)
             except Exception as e:
-                logger.warning('%', e)
+                logger.warning('%s', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
         

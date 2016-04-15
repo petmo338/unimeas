@@ -135,7 +135,7 @@ class MeasureIntervalTask(Task):
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.on_trait_change(self._configure_plots, 'active_instrument.enabled_channels[]')
         self.plot_panel.configure_plots(self.active_instrument)
-        self.sql_panel.set_active_instrument(new)
+#        self.sql_panel.set_active_instrument(new)
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument

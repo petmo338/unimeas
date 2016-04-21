@@ -95,8 +95,7 @@ class SourceMeter(HasTraits):
             self.instrument.write('status.node_enable = status.MSB')
             self.instrument.write('status.request_enable = status.MSB')
             self.instrument.write('digio.writeprotect = 0')
-            nplc = min(10, (self.update_interval * 0.3) / 0.02)     # ADC time is 30% of self.update_interval (assuming 50Hz PLC)
-            self.instrument.write('smua.measure.nplc = '+ str(int(nplc)))
+
             self.instrument.write('smua.sense = smua.SENSE_REMOTE') # 4-wire measurement
             self.instrument.write('status.measurement.reading_overflow.enable =\
                 status.measurement.reading_overflow.SMUA')
@@ -108,10 +107,7 @@ class SourceMeter(HasTraits):
             self.instrument.write('smua.source.autorangev = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.autorangei = smua.AUTORANGE_OFF')
             self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_OFF')
-            self.instrument.write('smua.measure.rangei = %e'  % ((self.current_limit * 1.1)/1000))
-            self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
-            self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
-            self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
+
 
             self.instrument.write('display.smua.measure.func = display.MEASURE_DCAMPS')          
 
@@ -141,7 +137,13 @@ class SourceMeter(HasTraits):
         self.output_values = np.divide(np.array(xrange(int(length) + 1)), length)
         self.output_values = self.start_voltage + np.multiply(self.output_values, self.stop_voltage - self.start_voltage)
         self.acq_start_time = time()
+        self.instrument.write('smua.measure.rangei = %e'  % ((self.current_limit * 1.1)/1000))
+        self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
+        self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
+        self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
         self.instrument.write('smua.source.levelv = %e' % self.start_voltage)
+        nplc = min(10, (self.update_interval * 0.3) / 0.02)     # ADC time is 30% of self.update_interval (assuming 50Hz PLC)
+        self.instrument.write('smua.measure.nplc = '+ str(int(nplc)))
         self.instrument.write('smua.source.output = smua.OUTPUT_ON')
         self.timer = Timer(self.update_interval*1000.0, self._onTimer)
 

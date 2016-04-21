@@ -2,7 +2,7 @@ import logging
 import serial
 import os
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
-    List, Unicode, Str, Int, on_trait_change, Event, Button
+    List, Unicode, Str, Int, on_trait_change, Event, Button, Float
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
 import traits.has_traits
@@ -54,6 +54,9 @@ class TGS2442_MOSLab(HasTraits):
     _available_ports = List(Unicode)
     serialport = Instance(serial.Serial)
     portname = Str
+    sensor_output_voltage = Float
+    sample_nr = Int
+
 
     traits_view = View(HGroup(Label('Device: '), Item('portname', \
                         show_label = False,
@@ -61,7 +64,9 @@ class TGS2442_MOSLab(HasTraits):
                             enabled_when='not running'),
                             Item('refresh_list')), \
                         Item('start_stop', label = 'Start/Stop Acqusistion',
-                                editor = ButtonEditor(label_value='button_label')),\
+                                editor = ButtonEditor(label_value='button_label')),
+                       Item('sensor_output_voltage', style='readonly', format_str='%.3f'),
+                       Item('sample_nr', style='readonly'),
                                 handler=TGS2442Handler)
 
     #def __init__(self):
@@ -85,7 +90,8 @@ class TGS2442_MOSLab(HasTraits):
                     pass
         else:
             # unix
-            for port in serial.list_ports.comports():
+            import serial.tools.list_ports as lp
+            for port in lp.comports():
                 l.append(port[0])
         return l
 
@@ -109,7 +115,7 @@ class TGS2442_MOSLab(HasTraits):
                                             self.x_units[1]:measurement_time}),\
                             dict({self.y_units[0]:4.9*((b[0]*256 + b[1])/1024.0)}))
         self.timer = Timer.singleShot(max(0, ((float(self.sample_nr)) - measurement_time) * 1000), self.add_data)
-
+        self.sensor_output_voltage = 4.9*((b[0]*256 + b[1])/1024.0)
         self.acquired_data.append(d)
 
     #### 'IInstrument' interface #############################################

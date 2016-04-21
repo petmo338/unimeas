@@ -112,7 +112,7 @@ class SourceMeter(HasTraits):
             self.instrument.write('smua.source.func = smua.OUTPUT_DCVOLTS')
             self.instrument.write('smua.source.limiti = %e' % (self.current_limit/1000))
             self.instrument.write('smua.source.rangev = %e' % (max(abs(self.start_voltage), abs(self.stop_voltage)) * 1.1))
-            self.instrument.write('smua.source.levelv = %e' % self.start_voltage)
+
             self.instrument.write('display.smua.measure.func = display.MEASURE_DCAMPS')          
 
 
@@ -120,8 +120,8 @@ class SourceMeter(HasTraits):
         if self.instrument is not None:
             self.instrument.write('smua.source.levelv = 0')
             self.instrument.write('smua.source.output = smua.OUTPUT_OFF')
-            self.instrument.write('smua.measure.autorangei = smua.AUTORANGE_ON')
-            self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_ON')
+            # self.instrument.write('smua.measure.autorangei = smua.AUTORANGE_ON')
+            # self.instrument.write('smua.measure.autorangev = smua.AUTORANGE_ON')
 
 
     def start(self):
@@ -141,6 +141,7 @@ class SourceMeter(HasTraits):
         self.output_values = np.divide(np.array(xrange(int(length) + 1)), length)
         self.output_values = self.start_voltage + np.multiply(self.output_values, self.stop_voltage - self.start_voltage)
         self.acq_start_time = time()
+        self.instrument.write('smua.source.levelv = %e' % self.start_voltage)
         self.instrument.write('smua.source.output = smua.OUTPUT_ON')
         self.timer = Timer(self.update_interval*1000.0, self._onTimer)
 
@@ -167,7 +168,7 @@ class SourceMeter(HasTraits):
             return
         self.sample_nr += 1
         d = dict()
-        values = self.instrument.query_ascii_values('*STB?', converter='b')
+        values = self.instrument.query_ascii_values('*STB?', converter='d')
         if int(values[0]) ^ 64 == 1:
             self.current_limit_exceeded = True
 

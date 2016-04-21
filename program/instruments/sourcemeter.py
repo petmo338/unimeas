@@ -141,38 +141,18 @@ class SourceMeter(HasTraits):
             pass
 
         d = {}
-        #candidates = [k for k, n in instruments_info.items() if n.interface_type is visa.constants.InterfaceType.gpib
-        #                                                   or n.interface_type is visa.constants.InterfaceType.usb
-        #
-        candidates = ['TCPIP0::192.168.0.2::inst0::INSTR']
-        for instrument in candidates:
-            try:
-                temp_inst = self.visa_resource.open_resource(instrument, open_timeout=1000)
-            except visa.VisaIOError:
-                logger.warning('Could not probe %s', instrument)
-                break
-            try:
-                model = temp_inst.query('*IDN?')
-            except Exception as e:
-                logger.info('Got %s while probing', e)
-                break
-            logger.info('Found %s', model)
-            if model.find(INSTRUMENT_IDENTIFIER[0]) == 0 and model.find(INSTRUMENT_IDENTIFIER[1]) > 0:
-                d[instrument] = model[:40]
+        candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-        #d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
-        # candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
-        # d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
-        #
-        # candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('USB')]
-        # d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
-        #
-        # candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('k-26')]
-        # d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
+        candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('USB')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
-#        candidates = [n for n in instruments_info.values() if n.alias is not None and
-#                      n.alias.lower().startswith('sourcemeter')]
-#        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
+        candidates = [n for n in instruments_info.values() if n.resource_name.lower().startswith('k-26')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
+
+        candidates = [n for n in instruments_info.values() if n.alias is not None and
+                      n.alias.lower().startswith('sourcemeter')]
+        d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
         logger.warning(d)
         return d
 

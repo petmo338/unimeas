@@ -223,69 +223,62 @@ class TemperatureControlPanel(HasTraits):
     get_parameters_queue = Instance(Queue.Queue)
     serial_handler = Instance(SerialHandler)
 
-
     traits_view = View(
-        HGroup(Item('selected_com_port',  label = 'Com port', \
-                                editor = EnumEditor(name='com_ports_list'), \
-                                enabled_when='not running'),
-                                Item('connect', editor = ButtonEditor(label_value='connect_button_string'),
-                                    show_label = False,  enabled_when = 'selected_com_port != ""')),
-        Item('enable', label = 'Enable temp program', enabled_when = 'connected'),
-        Item('loop_sequence', label = 'Loop temperature sequence'),
-        Group(
-            Item( 'table_entries',
-                  show_label  = False,
-                  editor      = table_editor,
-                  enabled_when = 'True'
-            ),
-            HGroup(Item('filename'), spring, Item('save', show_label = False),
-                Item('load', show_label = False)),
-            show_border = True,
-        ),
-
+        HGroup(Item('selected_com_port',  label='Com port',
+                    editor=EnumEditor(name='com_ports_list'),
+                    enabled_when='not running'),
+               Item('connect', editor=ButtonEditor(label_value='connect_button_string'),
+                    show_label=False,  enabled_when='selected_com_port != ""')),
+        Item('enable', label='Enable temp program', enabled_when='connected'),
+        Item('loop_sequence', label='Loop temperature sequence'),
+        Group(Item('table_entries', show_label=False, editor=table_editor,
+                   enabled_when='True'
+                   ),
+              HGroup(Item('filename'), spring, Item('save', show_label=False),
+                     Item('load', show_label=False)),
+              show_border=True,
+              ),
         Group(
             HGroup(
-                VGroup(Item('actual_temp', style = 'readonly', format_str = '%.2f'),
-                    Item('process_value', style = 'readonly', format_str = '%.2f'),  
-                    Item('adjusted_pv', style = 'readonly', format_str = '%.2f'),  
-                    Item('setpoint', style = 'readonly', format_str = '%.2f')),
+                VGroup(Item('actual_temp', style='readonly', format_str='%.2f'),
+                       Item('process_value', style='readonly', format_str='%.2f'),
+                       Item('adjusted_pv', style='readonly', format_str='%.2f'),
+                    Item('setpoint', style='readonly', format_str='%.2f')),
                 spring,
-                VGroup(Item('pwm_value', style = 'readonly', format_str = '%d'), 
-                    Item('max31865_ctrl', style = 'readonly', format_str = '%#04x'), 
-                    Item('max31865_error', style = 'readonly', format_str = '%#04x')),spring,
-                VGroup(Item('PID_out', style = 'readonly', format_str = '%.2f'), 
-                    Item('supply_voltage', style = 'readonly', format_str = '%.2f'),  
-                    Item('RT_resistance', style = 'readonly', format_str = '%.2f'))),
-            label = 'Diagnostic parameters', show_border = True,
-       ),
-
+                VGroup(Item('pwm_value', style='readonly', format_str='%d'),
+                       Item('max31865_ctrl', style='readonly', format_str='%#04x'),
+                       Item('max31865_error', style='readonly', format_str='%#04x')),
+                spring,
+                VGroup(Item('PID_out', style='readonly', format_str='%.2f'),
+                       Item('supply_voltage', style='readonly', format_str='%.2f'),
+                       Item('RT_resistance', style='readonly', format_str='%.2f'))),
+            label='Diagnostic parameters', show_border=True,
+        ),
        HGroup(
             Group(
-                VGroup(Item('temp_setpoint', format_str = '%.1f')),
-                VGroup(Item('resistance_setpoint', format_str = '%.1f')),
-                VGroup(Item('supply_voltage_setpoint', format_str = '%.1f')),
-                VGroup(Item('RT_resistance_setpoint', format_str = '%.1f')),
-                Item('set_parameters', enabled_when = 'connected'),
-                label = 'Adjustable parameters', show_border = True,
+                VGroup(Item('temp_setpoint', format_str='%.1f')),
+                VGroup(Item('resistance_setpoint', format_str='%.1f')),
+                VGroup(Item('supply_voltage_setpoint', format_str='%.1f')),
+                VGroup(Item('RT_resistance_setpoint', format_str='%.1f')),
+                Item('set_parameters', enabled_when='connected'),
+                label='Adjustable parameters', show_border=True,
                 ),
             Group(
-                Item('selected_pid_configuration',  label = 'PID adaption', \
-                                editor = EnumEditor(name='available_pid_configurations'), \
-                                enabled_when='True'),
-                VGroup(Item('pid_P', label = 'PID P', format_str = '%.7f')),
-                VGroup(Item('pid_I', label = 'PID I', format_str = '%.7f')),
-                VGroup(Item('pid_D', label = 'PID D',  format_str = '%.7f')),
-                VGroup(Item('pid_N', label = 'PID Nd',  format_str = '%.7f')),
-                VGroup(Item('pwm_table_index', label = 'tbl_idx')),
-                HGroup(Item('use_direct_pwm'), Item('pwm_set_direct', show_label = False)),
-                Item('update_pid', enabled_when = 'connected'),
-                Item('save_detailed_log', enabled_when = 'connected'),
-                label = 'PID parameters - Don\'t touch', show_border = True,
+                Item('selected_pid_configuration', label='PID adaption',
+                     editor=EnumEditor(name='available_pid_configurations'),
+                     enabled_when='True'),
+                VGroup(Item('pid_P', label='PID P', format_str='%.7f')),
+                VGroup(Item('pid_I', label='PID I', format_str='%.7f')),
+                VGroup(Item('pid_D', label='PID D',  format_str='%.7f')),
+                VGroup(Item('pid_N', label='PID Nd',  format_str='%.7f')),
+                VGroup(Item('pwm_table_index', label='tbl_idx')),
+                HGroup(Item('use_direct_pwm'), Item('pwm_set_direct', show_label=False)),
+                Item('update_pid', enabled_when='connected'),
+                Item('save_detailed_log', enabled_when='connected'),
+                label='PID parameters - Don\'t touch', show_border=True,
                 ),
         ),
-        resizable = True,
-        kind      = 'live',
-        handler = TemperatureControlHandler
+        resizable=True, kind='live', handler=TemperatureControlHandler
     )
 
     def _set_parameters_queue_default(self):
@@ -305,14 +298,13 @@ class TemperatureControlPanel(HasTraits):
             self.connect_button_string = 'Connect'
 
     def _save_detailed_log_changed(self, new):
-        if new == True:
+        if new:
             self.fh = open('templog_' + strftime("%y%m%d_%H%M%S") + '.csv', 'w')
             self.csv_writer = csv.writer(self.fh,quoting=csv.QUOTE_NONNUMERIC)
             self.csv_writer.writerow(['pv','pid_out','pwm','max31ctrl','max31err','sp', 'sv','RT_ref','pid_p','pid_i','pid_d','pid_n','time'])
             self.log_start_time = time()
         else:
             self.fh.close()
-
 
     def _RT_resistance_setpoint_changed(self, new):
         self.resistance_setpoint = temp_to_resistance(self.temp_setpoint, new)
@@ -323,7 +315,6 @@ class TemperatureControlPanel(HasTraits):
         self.pid_D = PID_configurations[new]['D']
         self.pid_N = PID_configurations[new]['N']
         self.pwm_table_index = PID_configurations[new]['pwm_table_index']
-
 
     def _available_pid_configurations_default(self):
         return PID_configurations.keys()
@@ -343,7 +334,6 @@ class TemperatureControlPanel(HasTraits):
             self.current_row += 1
             self.row_changed(time_left)
 
-
     def _poll_queue(self):
         while not self.get_parameters_queue.empty():
             try:
@@ -362,21 +352,20 @@ class TemperatureControlPanel(HasTraits):
             self.setpoint = values[5]
             self.supply_voltage = values[6]
             self.RT_resistance = values[7]
-            if  self.update_PID_values > 0:
+            if self.update_PID_values > 0:
                 self.update_PID_values -= 1
                 self.pid_P = values[8]
                 self.pid_I = values[9]
                 self.pid_D = values[10]
                 self.pid_N = values[11]
-            if self.save_detailed_log == True:
+            if self.save_detailed_log:
                 self.csv_writer.writerow(values + (time() - self.log_start_time,))
-
 
     def _table_entries_default(self):
         return [TableEntry(time = 15, start_temp = 150, end_temp = 150, remaining = -1),
                 TableEntry(time = 15, start_temp = 350, end_temp = 350, remaining = -1),
                 TableEntry(time = 15, start_temp = 250, end_temp = 250, remaining = -1)]
-        #return [TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
+        #        return [TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
         #        TableEntry(time = 200, start_temp = 650, end_temp = 650, remaining = -1),
         #        TableEntry(time = 1200, start_temp = 650, end_temp = 200, remaining = -1),
         #        TableEntry(time = 7300, start_temp = 200, end_temp = 200, remaining = -1),
@@ -438,18 +427,18 @@ class TemperatureControlPanel(HasTraits):
         pass
 
     def get_data(self):
-        return ({'time': 0}, {'temp': self.actual_temp})
+        return {'time': 0}, {'temp': self.actual_temp}
 
     def calculate_temperature_table(self):
         self.temperature_table = np.array([])
         for row in self.table_entries:
             self.temperature_table = np.hstack((self.temperature_table,
-                np.linspace(row.start_temp, row.end_temp, row.time)))
+                                                np.linspace(row.start_temp, row.end_temp, row.time)))
 
     def row_changed(self, remainder):
         self.row_start_time = self.current_time + remainder
         if self.current_row >= len(self.table_entries):
-            if self.loop_sequence == True:
+            if self.loop_sequence:
                 self.start_time = time()
                 for row in self.table_entries:
                     row.remaining = row.time
@@ -459,12 +448,11 @@ class TemperatureControlPanel(HasTraits):
 
     def _current_temp_changed(self, new):
         self.temp_setpoint = new
-        if self.use_direct_pwm == True:
+        if self.use_direct_pwm:
             self.pwm_set_direct = int(new)
             self._update_pid_fired()
             return
         self._set_parameters_fired()
-
 
     def _com_ports_list_default(self):
         import serial.tools.list_ports as lp
@@ -485,12 +473,11 @@ class TemperatureControlPanel(HasTraits):
             self.supply_voltage_setpoint, self.RT_resistance_setpoint, 0, 0))
         self.update_PID_values = 3
 
-
     def _connect_fired(self):
         if self.serial_handler is None:
             self.serial_handler = SerialHandler(self.set_parameters_queue, self.get_parameters_queue,
                     self.selected_com_port)
-            if self.serial_handler.open_port() == False:
+            if not self.serial_handler.open_port():
                 return
             self.poll_timer = Timer(POLL_INTERVAL/2, self._poll_queue)
             self.serial_handler.start()
@@ -500,10 +487,9 @@ class TemperatureControlPanel(HasTraits):
             self.serial_handler.exit_flag = True
             self.serial_handler.join()
             self.serial_handler = None
-            if self.poll_timer != None:
+            if self.poll_timer is not None:
                 self.poll_timer.stop()
             self.connected = False
-
 
     def _save_fired(self):
         if self.filename is '':
@@ -512,7 +498,7 @@ class TemperatureControlPanel(HasTraits):
         filehandle = open(self.filename, "w", 1)
         fieldnames = self.table_entries[0].trait_get().keys()
         csv_writer = csv.DictWriter(filehandle, fieldnames=fieldnames, delimiter=',',
-                            quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+                                    quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
         csv_writer.writeheader()
         for row in self.table_entries:
             csv_writer.writerow(row.trait_get())
@@ -527,8 +513,9 @@ class TemperatureControlPanel(HasTraits):
         self.table_entries = []
         for row in reader:
             self.table_entries.append(TableEntry(time = int(row['time']),
-                start_temp = int(row['start_temp']), end_temp = int(row['end_temp']),
-                remaining = int(row['time'])))
+                                                 start_temp=nt(row['start_temp']),
+                                                 end_temp=int(row['end_temp']),
+                                                 remaining=int(row['time'])))
         filehandle.close()
 
     def _set_temp_table_for_calibration(self):

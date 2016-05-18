@@ -17,13 +17,18 @@ import csv
 logger = logging.getLogger(__name__)
 
 
-PID_configurations = {  'Normal TO-8': {'P': 5.821729083089657, 'I': 1.626933965977756, 'D': 1.332938348953647, 'N': 1.448274562118016, 'pwm_table_index': 0},
-                        'Sensic M18 ceramic': {'P': 9.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 1},
-                        'L-A Cap': {'P': 8.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0},
-                        'Small mass': {'P': 2.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0}}
-
+PID_configurations = {'Normal TO-8': {'P': 5.821729083089657, 'I': 1.626933965977756, 'D': 1.332938348953647,
+                                      'N': 1.448274562118016, 'pwm_table_index': 0},
+                      'Sensic M18 ceramic': {'P': 9.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793,
+                                             'N': 37.8230336021021, 'pwm_table_index': 1},
+                      'L-A Cap': {'P': 8.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793,
+                                  'N': 37.8230336021021, 'pwm_table_index': 0},
+                      'Small mass': {'P': 2.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793,
+                                     'N': 37.8230336021021, 'pwm_table_index': 0}}
 BAUD_RATE = 115200
 POLL_INTERVAL = 200.0
+
+
 def open_port(port, timeout):
     com = serial.Serial()
     com.port = port
@@ -36,22 +41,26 @@ def open_port(port, timeout):
     com.open()
     return com
 
-def temp_to_resistance(temp, resistance_at_RT = 109.7):
-    return (100.0 * (resistance_at_RT/109.7)) * (1 + (3.908e-3 * temp) + (-5.775e-7 * temp * temp))
 
-def resistance_to_temp(resistance, resistance_at_RT = 109.7):
-    R0 = (100.0 * (resistance_at_RT/109.7))
+def temp_to_resistance(temp, resistance_at_rt=109.7):
+    return (100.0 * (resistance_at_rt/109.7)) * (1 + (3.908e-3 * temp) + (-5.775e-7 * temp * temp))
+
+
+def resistance_to_temp(resistance, resistance_at_rt=109.7):
+    r0 = (100.0 * (resistance_at_rt/109.7))
     a = 3.908e-3
     b = -5.775e-7
     if resistance > 500:
         return 999
-    return (-R0*a + sqrt(R0*R0*a*a-4*R0*b*(R0-resistance)))/(2*R0*b)
+    return (-r0*a + sqrt(r0*r0*a*a-4*r0*b*(r0-resistance)))/(2*r0*b)
+
 
 class SerialHandler(threading.Thread):
     BAUD_RATE = 115200
     response_unpack_format = '<2f3B7f'
     exit_flag = False
     is_connected = False
+    ser = Instance(serial.Serial)
 
     def __init__(self, set_parameters_queue, get_parameters_queue, selected_com_port):
         threading.Thread.__init__(self)
@@ -109,31 +118,35 @@ class TableEntry(HasTraits):
         if new < 1:
             new = 1
         self.remaining = new
-        self.trait_set(trait_change_notify=False, ramp=int((self.end_temp - self.start_temp) / (new/60.0)))
+        self.trait_set(trait_change_notify=False, ramp=int((self.end_temp - self.start_temp) / (new / 60.0)))
 
     def _ramp_changed(self, new):
         if new != 0:
-            self.trait_set(trait_change_notify=False, time = int(60.0*(self.end_temp - self.start_temp) / (new)))
+            self.trait_set(trait_change_notify=False, time=int(60.0*(self.end_temp - self.start_temp) / new))
             self.remaining = self.time
 
     @on_trait_change('start_temp', 'end_temp')
     def _update_ramp(self, obj, old, new):
-        self.trait_set(trait_change_notify=False, ramp=int((self.end_temp - self.start_temp) / (self.time/60.0)))
+        self.trait_set(trait_change_notify=False, ramp=int((self.end_temp - self.start_temp) / (self.time / 60.0)))
 
 
 table_editor = TableEditor(
-    columns = [ NumericColumn( name = 'time', label = 'Seconds', horizontal_alignment = 'right'),
-                NumericColumn( name = 'start_temp', label = 'Start temp'),
-                NumericColumn( name = 'end_temp', label = 'End temp'),
-                NumericColumn( name = 'ramp', label = u'Ramp \u00b0/min'),
-                NumericColumn( name = 'remaining', editable = False, label = 'Time left', width = 60, read_only_cell_color = 0xF4F3EE)],
-    deletable   = True,
-    sort_model  = False,
-    auto_size   = True,
-    orientation = 'vertical',
-    show_toolbar = False,
-    sortable = False,
-    row_factory = TableEntry )
+    columns=[
+        NumericColumn(name='time', label='Seconds', horizontal_alignment='right'),
+        NumericColumn(name='start_temp', label='Start temp'),
+        NumericColumn(name='end_temp', label='End temp'),
+        NumericColumn(name='ramp', label=u'Ramp \u00b0/min'),
+        NumericColumn(name='remaining', editable=False, label='Time left', width=60,
+                      read_only_cell_color=0xF4F3EE)],
+    deletable=True,
+    sort_model=False,
+    auto_size=True,
+    orientation='vertical',
+    show_toolbar=False,
+    sortable=False,
+    row_factory=TableEntry
+)
+
 
 class TemperatureControlHandler(Handler):
 
@@ -142,9 +155,9 @@ class TemperatureControlHandler(Handler):
         Overridden here to stop the timer once the window is destroyed.
         """
 
-        if info.object.serial_handler != None:
+        if info.object.serial_handler is not None:
             info.object.serial_handler.exit_flag = True
-            #while self.serial_handler.isAlive():
+            # while self.serial_handler.isAlive():
             #    self.serial_handler.join()
         if info.object.timing_timer is not None:
             info.object.timing_timer.Stop()
@@ -163,9 +176,9 @@ class TemperatureControlPanel(HasTraits):
     TIMING_UPDATE_INTERVAL = 500.0
 
     pane_name = Str('Temperature control ')
-    pane_id = Str('sensorscience.unimeas.temperatur_control_pane')
-    output_channels = Dict({0:'temp_controller'})
-    y_units = Dict({0 : 'temp'})
+    pane_id = Str('sensorscience.unimeas.temperature_control_pane')
+    output_channels = Dict({0: 'temp_controller'})
+    y_units = Dict({0: 'temp'})
     enable = Bool(False)
     loop_sequence = Bool(True)
     poll_timer = Instance(Timer)
@@ -182,7 +195,7 @@ class TemperatureControlPanel(HasTraits):
     max31865_error = Int
     setpoint = Float
     supply_voltage = Float
-    RT_resistance = Float
+    rt_resistance = Float
     set_temp = Float
     current_time = Float
     row_start_time = Float
@@ -202,8 +215,7 @@ class TemperatureControlPanel(HasTraits):
     temp_setpoint = Float
     resistance_setpoint = Float
     supply_voltage_setpoint = Float(15.0)
-    RT_resistance_setpoint = Float(109.71)
-
+    rt_resistance_setpoint = Float(109.71)
 
     temperature_table = Array
     selected_com_port = Str
@@ -243,7 +255,7 @@ class TemperatureControlPanel(HasTraits):
                 VGroup(Item('actual_temp', style='readonly', format_str='%.2f'),
                        Item('process_value', style='readonly', format_str='%.2f'),
                        Item('adjusted_pv', style='readonly', format_str='%.2f'),
-                    Item('setpoint', style='readonly', format_str='%.2f')),
+                       Item('setpoint', style='readonly', format_str='%.2f')),
                 spring,
                 VGroup(Item('pwm_value', style='readonly', format_str='%d'),
                        Item('max31865_ctrl', style='readonly', format_str='%#04x'),
@@ -251,15 +263,15 @@ class TemperatureControlPanel(HasTraits):
                 spring,
                 VGroup(Item('PID_out', style='readonly', format_str='%.2f'),
                        Item('supply_voltage', style='readonly', format_str='%.2f'),
-                       Item('RT_resistance', style='readonly', format_str='%.2f'))),
+                       Item('rt_resistance', style='readonly', format_str='%.2f'))),
             label='Diagnostic parameters', show_border=True,
         ),
-       HGroup(
+        HGroup(
             Group(
                 VGroup(Item('temp_setpoint', format_str='%.1f')),
                 VGroup(Item('resistance_setpoint', format_str='%.1f')),
                 VGroup(Item('supply_voltage_setpoint', format_str='%.1f')),
-                VGroup(Item('RT_resistance_setpoint', format_str='%.1f')),
+                VGroup(Item('rt_resistance_setpoint', format_str='%.1f')),
                 Item('set_parameters', enabled_when='connected'),
                 label='Adjustable parameters', show_border=True,
                 ),
@@ -281,14 +293,16 @@ class TemperatureControlPanel(HasTraits):
         resizable=True, kind='live', handler=TemperatureControlHandler
     )
 
-    def _set_parameters_queue_default(self):
+    @staticmethod
+    def _set_parameters_queue_default():
         return Queue.Queue(2)
 
-    def _get_parameters_queue_default(self):
+    @staticmethod
+    def _get_parameters_queue_default():
         return Queue.Queue(2)
 
     def _temp_setpoint_changed(self, new):
-        self.resistance_setpoint = temp_to_resistance(new, self.RT_resistance_setpoint)
+        self.resistance_setpoint = temp_to_resistance(new, float(self.rt_resistance_setpoint))
 
     def _connected_changed(self, new):
         if new is True:
@@ -300,13 +314,14 @@ class TemperatureControlPanel(HasTraits):
     def _save_detailed_log_changed(self, new):
         if new:
             self.fh = open('templog_' + strftime("%y%m%d_%H%M%S") + '.csv', 'w')
-            self.csv_writer = csv.writer(self.fh,quoting=csv.QUOTE_NONNUMERIC)
-            self.csv_writer.writerow(['pv','pid_out','pwm','max31ctrl','max31err','sp', 'sv','RT_ref','pid_p','pid_i','pid_d','pid_n','time'])
+            self.csv_writer = csv.writer(self.fh, quoting=csv.QUOTE_NONNUMERIC)
+            self.csv_writer.writerow(['pv', 'pid_out', 'pwm', 'max31ctrl', 'max31err', 'sp', 'sv', 'RT_ref', 'pid_p',
+                                      'pid_i', 'pid_d', 'pid_n', 'time'])
             self.log_start_time = time()
         else:
             self.fh.close()
 
-    def _RT_resistance_setpoint_changed(self, new):
+    def _rt_resistance_setpoint_changed(self, new):
         self.resistance_setpoint = temp_to_resistance(self.temp_setpoint, new)
 
     def _selected_pid_configuration_changed(self, new):
@@ -316,10 +331,11 @@ class TemperatureControlPanel(HasTraits):
         self.pid_N = PID_configurations[new]['N']
         self.pwm_table_index = PID_configurations[new]['pwm_table_index']
 
-    def _available_pid_configurations_default(self):
+    @staticmethod
+    def _available_pid_configurations_default():
         return PID_configurations.keys()
 
-    def _onTimer(self):
+    def _on_timer(self):
         self.current_time = time() - self.start_time
         index = int(np.floor(self.current_time))
         if index >= len(self.temperature_table):
@@ -339,7 +355,7 @@ class TemperatureControlPanel(HasTraits):
             try:
                 values = self.get_parameters_queue.get_nowait()
             except Queue.Empty:
-                logger.error('No temp recieved from SerialHandler - Strange')
+                logger.error('No temp received from SerialHandler - Strange')
                 pass
             self.get_parameters_queue.task_done()
             self.actual_temp = resistance_to_temp(values[0], values[7])
@@ -351,7 +367,7 @@ class TemperatureControlPanel(HasTraits):
             self.max31856_error = values[4]
             self.setpoint = values[5]
             self.supply_voltage = values[6]
-            self.RT_resistance = values[7]
+            self.rt_resistance = values[7]
             if self.update_PID_values > 0:
                 self.update_PID_values -= 1
                 self.pid_P = values[8]
@@ -361,42 +377,11 @@ class TemperatureControlPanel(HasTraits):
             if self.save_detailed_log:
                 self.csv_writer.writerow(values + (time() - self.log_start_time,))
 
-    def _table_entries_default(self):
-        return [TableEntry(time = 15, start_temp = 150, end_temp = 150, remaining = -1),
-                TableEntry(time = 15, start_temp = 350, end_temp = 350, remaining = -1),
-                TableEntry(time = 15, start_temp = 250, end_temp = 250, remaining = -1)]
-        #        return [TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 200, start_temp = 650, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 650, end_temp = 200, remaining = -1),
-        #        TableEntry(time = 7300, start_temp = 200, end_temp = 200, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 200, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 150, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 750, start_temp = 150, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 120, start_temp = 650, end_temp = 50, remaining = -1),
-        #        TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 200, start_temp = 650, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 650, end_temp = 300, remaining = -1),
-        #        TableEntry(time = 7300, start_temp = 300, end_temp = 300, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 300, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 150, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 750, start_temp = 150, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 120, start_temp = 650, end_temp = 50, remaining = -1),
-        #        TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 200, start_temp = 650, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 650, end_temp = 400, remaining = -1),
-        #        TableEntry(time = 7300, start_temp = 400, end_temp = 400, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 400, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 150, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 750, start_temp = 150, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 120, start_temp = 650, end_temp = 50, remaining = -1),
-        #        TableEntry(time = 700, start_temp = 50, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 200, start_temp = 650, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 650, end_temp = 500, remaining = -1),
-        #        TableEntry(time = 7300, start_temp = 500, end_temp = 500, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 500, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 1200, start_temp = 150, end_temp = 150, remaining = -1),
-        #        TableEntry(time = 750, start_temp = 150, end_temp = 650, remaining = -1),
-        #        TableEntry(time = 120, start_temp = 650, end_temp = 50, remaining = -1),]
+    @staticmethod
+    def _table_entries_default():
+        return [TableEntry(time=15, start_temp=150, end_temp=150, remaining=-1),
+                TableEntry(time=15, start_temp=350, end_temp=350, remaining=-1),
+                TableEntry(time=15, start_temp=250, end_temp=250, remaining=-1)]
 
     def start_stop(self, running):
         if not self.enable:
@@ -414,7 +399,7 @@ class TemperatureControlPanel(HasTraits):
             self.current_row = 0
             self.row_changed(time() - self.start_time)
             self.current_temp = self.temperature_table[0]
-            self.timing_timer = Timer(self.TIMING_UPDATE_INTERVAL, self._onTimer)
+            self.timing_timer = Timer(self.TIMING_UPDATE_INTERVAL, self._on_timer)
 
         else:
             if not self.running:
@@ -454,32 +439,34 @@ class TemperatureControlPanel(HasTraits):
             return
         self._set_parameters_fired()
 
-    def _com_ports_list_default(self):
+    @staticmethod
+    def _com_ports_list_default():
         import serial.tools.list_ports as lp
-        l = []
+        ports = []
         for p in lp.grep('Arduino'):
-            l.append(p[0])
-        return l
+            ports.append(p[0])
+        return ports
 
     def _set_parameters_fired(self):
         self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 0, 0, 0, self.pwm_table_index,
-            self.resistance_setpoint, self.supply_voltage_setpoint, 
-            self.RT_resistance_setpoint, 0, 0))
+                                                         self.resistance_setpoint, self.supply_voltage_setpoint,
+                                                         self.rt_resistance_setpoint, 0, 0))
 
     def _update_pid_fired(self):
         self.set_parameters_queue.put_nowait(struct.pack('<c4f', 'p', self.pid_P, self.pid_I, self.pid_D, self.pid_N))
-        self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 
-            int(self.use_direct_pwm), 0, self.pwm_set_direct, self.pwm_table_index, self.resistance_setpoint, 
-            self.supply_voltage_setpoint, self.RT_resistance_setpoint, 0, 0))
+        self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, int(self.use_direct_pwm), 0,
+                                                         self.pwm_set_direct, self.pwm_table_index,
+                                                         self.resistance_setpoint, self.supply_voltage_setpoint,
+                                                         self.rt_resistance_setpoint, 0, 0))
         self.update_PID_values = 3
 
     def _connect_fired(self):
         if self.serial_handler is None:
             self.serial_handler = SerialHandler(self.set_parameters_queue, self.get_parameters_queue,
-                    self.selected_com_port)
+                                                self.selected_com_port)
             if not self.serial_handler.open_port():
                 return
-            self.poll_timer = Timer(POLL_INTERVAL/2, self._poll_queue)
+            self.poll_timer = Timer(POLL_INTERVAL / 2, self._poll_queue)
             self.serial_handler.start()
             self.connected = True
         else:
@@ -512,17 +499,16 @@ class TemperatureControlPanel(HasTraits):
         reader = csv.DictReader(filehandle)
         self.table_entries = []
         for row in reader:
-            self.table_entries.append(TableEntry(time = int(row['time']),
-                                                 start_temp=nt(row['start_temp']),
+            self.table_entries.append(TableEntry(time=int(row['time']),
+                                                 start_temp=int(row['start_temp']),
                                                  end_temp=int(row['end_temp']),
                                                  remaining=int(row['time'])))
         filehandle.close()
 
     def _set_temp_table_for_calibration(self):
         pwms = [int(a) for a in np.hstack((np.linspace(0, 255, 256), np.linspace(255, 0, 256)))]
-        self.table_entries = [TableEntry(time = 60, start_temp = t, end_temp = t, remaining = -1) for t in pwms]
-        self.temp_setpoint = self.table_entries[0].start_temp - 1 # Make sure they are unequal
-
+        self.table_entries = [TableEntry(time=60, start_temp=t, end_temp=t, remaining=-1) for t in pwms]
+        self.temp_setpoint = self.table_entries[0].start_temp - 1  # Make sure they are unequal
 
 
 if __name__ == '__main__':
@@ -532,6 +518,5 @@ if __name__ == '__main__':
     l.addHandler(console)
     l.setLevel(logging.DEBUG)
     l.info('test')
-    g=TemperatureControlPanel()
+    g = TemperatureControlPanel()
     g.configure_traits(filename='test2.test', id='unique_stuff.apa')
-

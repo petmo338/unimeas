@@ -1,6 +1,6 @@
 import font
-from pyb import CAN, Timer, delay
-from ustruct import unpack
+from pyb import CAN, Timer, delay, USB_VCP
+from ustruct import unpack, pack
 
 timer_ticks = 0
 time_to_heat_up = True
@@ -9,6 +9,8 @@ time_to_display = True
 display = font.Display()
 display.fill(0)
 text = font.Chars()
+
+usb_serial = USB_VCP()
 
 
 def tick(timer):
@@ -25,7 +27,7 @@ def decode_nox_message(received_data):
 		return True if value & value2 else False
 
 	(nox_ppm, lambda_linear, oxygen_millivolt) = unpack("hHH", bytearray(received_data[:48]))
-	
+
 	sensor_temp   = var(received_data[6], 0b00000011)
 	lambda_signal = var(received_data[6], 0b00001100)
 	nox_signal    = var(received_data[6], 0b00110000)
@@ -67,9 +69,9 @@ can.init(can.NORMAL, extframe=True, prescaler=21, sjw=1, bs1=5, bs2=2)
 can.setfilter(0, CAN.MASK32, 0, (0x0, 0x0))
 
 can_bus_up = False
-print("Waiting for CAN bus messages: ", end="")
+# print("Waiting for CAN bus messages: ", end="")
 while not can.any(0):
-	print(end="!")
+	# print(end="!")
 	write_on_display(1)
 	delay(1000)
 
@@ -104,17 +106,20 @@ while "not break":
 			hardware_error = nox_open_wire | nox_short
 			sensor_ok = sensor_temp & lambda_signal & nox_signal & sensor_supply, nox_valid
 
+
 			if time_to_display:
+				serial_data = pack('hHH', nox_ppm, lambda_linear, oxygen_millivolt)
+				usb_serial.write(serial_data)
 				write_on_display(0)
 
-				print(
-					"\nID {0:} = {0:08X}:  Data: {1:02X} {2:02X} {3:02X} {4:02X}  {5:02X} {6:02X} "
-					"{7:02X} {8:02X} ".format(can_id, *data), end="")
-				print(
-					sensor_temp, lambda_signal, nox_signal, sensor_supply,
-					nox_open_wire, nox_valid, nox_short,
-					nox_ppm, lambda_linear, oxygen_millivolt, end="")
+				# print(
+				# 	"\nID {0:} = {0:08X}:  Data: {1:02X} {2:02X} {3:02X} {4:02X}  {5:02X} {6:02X}  "
+				# 	"{7:02X} {8:02X} ".format(can_id, *data), end="")
+				# print(
+				# 	sensor_temp, lambda_signal, nox_signal, sensor_supply,
+				# 	nox_open_wire, nox_valid, nox_short,
+				# 	nox_ppm, lambda_linear, oxygen_millivolt, end="")
 
-				print(" Sensors OK: {}".format(sensor_ok), end="")
+				# print(" Sensors OK: {}".format(sensor_ok), end="")
 
 				time_to_display = False

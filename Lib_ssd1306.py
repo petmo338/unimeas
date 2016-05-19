@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import pyb
+# pyb
 
 # Constants
 DISPLAYOFF          = 0xAE
@@ -242,7 +242,7 @@ display.init_display()
 
 if __name__  == '__main__':
 	import pyb
-	from Lib_ssd1306 import SSD1306
+	# from Lib_ssd1306 import SSD1306
 
 	'''# SPI
 	display  =  SSD1306(pinout={'dc': 'Y3',

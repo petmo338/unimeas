@@ -142,10 +142,7 @@ class PyBoardSerial(HasTraits):
         if not self.running:
             return
         if self.get_parameters_queue.empty():
-            self.timer = Timer.singleShot(
-                max(0, ((float(self.sample_nr)) - measurement_time) *
-                    self.sample_interval * 1000), self.add_data
-            )
+            self.timer = Timer.singleShot(self.sample_interval * 1000, self.add_data)
             return
         (nox_ppm, lambda_linear, oxygen_millivolt) = self._poll_queue()
         self.serial_out = str(nox_ppm)
@@ -157,11 +154,7 @@ class PyBoardSerial(HasTraits):
                     {self.x_units[0]: self.sample_nr, self.x_units[1]: measurement_time}),
                     dict({self.y_units[0]: nox_ppm}))
         self.acquired_data.append(dict_data)
-        self.timer = Timer.singleShot(
-            max(0, (
-                (float(self.sample_nr)) - measurement_time) * self.sample_interval * 1000),
-            self.add_data
-        )
+        self.timer = Timer.singleShot(self.sample_interval * 1000 - (time() - self.acq_start_time - measurement_time
 
     def start(self):
         self.running = True

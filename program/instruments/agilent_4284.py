@@ -1,5 +1,5 @@
 from i_instrument import IInstrument
-from enthought.traits.api import HasTraits, Instance, Float, Dict, \
+from traits.api import HasTraits, Instance, Float, Dict, \
     List,  Unicode, Str, Int, on_trait_change,\
    Event, Bool, Enum
 from traitsui.api import View, Item, Group, ButtonEditor, Handler, EnumEditor

@@ -7,10 +7,18 @@ import csv
 import time
 import logging
 import tempfile
-import pg8000
+
 import ConfigParser
 
 logger = logging.getLogger(__name__)
+
+try:
+    import pg8000
+except ImportError as e:
+    logger.warning(e)
+    USE_PGSQL = False
+else:
+    USE_PGSQL = True
 
 try:
     from influxdb import InfluxDBClient
@@ -177,7 +185,7 @@ class SQLWrapper():
 
 class SQLPanel(HasTraits):
 
-    ############ Panel Interface ###########################3
+    """############ Panel Interface ###########################3"""
 
     pane_name = Str('Save Configuration')
     pane_id = Str('sensorscience.unimeas.sql_pane')
@@ -196,19 +204,21 @@ class SQLPanel(HasTraits):
     available_users = List(Unicode)
     available_measurements = List(Unicode)
 
-
-    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when = 'not running'),
-                            Item('selected_user',
-                            editor=EnumEditor(name='available_users'),
-                            enabled_when = 'not running and save_in_database'), spring,
-                        Item('new_measurement', show_label=False,  enabled_when = 'not running and save_in_database')),
-                        Item('measurement_name',
-                            editor=EnumEditor(name='available_measurements'),
-                            enabled_when = 'not running and save_in_database'),
-                        Item('measurement_description', enabled_when = 'False', style = 'custom'),
-                        Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
-                        #Item('filename', enabled_when = 'not running and save_to_file'),
-                        Item('filename',  style='simple', editor = FileEditor(dialog_style = 'save', filter = ['*.csv']))))
+    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when='USE_PGSQL and not running'),
+                                     Item('selected_user', editor=EnumEditor(name='available_users'),
+                                          enabled_when='not running and save_in_database'),
+                                     spring,
+                                     Item('new_measurement', show_label=False,
+                                          enabled_when='not running and save_in_database')),
+                              Item('measurement_name', editor=EnumEditor(name='available_measurements'),
+                                   enabled_when='not running and save_in_database'),
+                              Item('measurement_description', enabled_when='False', style='custom'),
+                              Item('save_to_file', label = 'Save to file (.csv)', enabled_when='not running'),
+                              Item('filename',  style='simple', editor=FileEditor(dialog_style='save',
+                                                                                  filter=['*.csv'])
+                                   )
+                              )
+                       )
 
     def _new_measurement_fired(self):
         popup = CreateMeasurementPopup()

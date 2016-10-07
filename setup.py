@@ -7,7 +7,7 @@ setup(
 
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine
-    install_requires = ['pyserial', 'pg8000', 'PyVISA', 'pyqtgraph', 'PyDAQmx',  'traitsui', 'envisage', 'pyzmq'],
+    install_requires = ['pyserial', 'PyVISA', 'pyqtgraph', 'PyDAQmx',  'traitsui', 'envisage'],
 
     package_data = {
         # If any package contains *.txt or *.rst files, include them:

@@ -1,7 +1,7 @@
 from traits.api import HasTraits, Bool, Int, List, Float, Instance, \
     Str
-from traitsui.api import Item, View, Group,Handler, \
-    TableEditor, Label
+from traitsui.api import Item, View, Group, Handler, \
+    TableEditor
 from traitsui.table_column import NumericColumn
 from time import time
 import logging

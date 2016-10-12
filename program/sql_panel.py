@@ -308,9 +308,11 @@ class SQLPanel(HasTraits):
         if running:
             if USE_INFLUX_DB_LOGGING:
                 try:
-                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
+                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD,
+                                                      INFLUX_DB_DATABASE, False, False, 0.2)
                 except Exception as e:
                     logger.warning('Real time plot connection failed: %s', e)
+                    USE_INFLUX_DB_LOGGING = False
                     
             self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
             logger.info('Backup measurement log: %s', self.backup_log_file.name)

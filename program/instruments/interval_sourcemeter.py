@@ -65,11 +65,13 @@ class SourceMeter(HasTraits):
     visa_resource = Instance(visa.ResourceManager, ())
     instrument = Instance(visa.Resource)
 
-    traits_view = View(Group(HGroup(Item('selected_device', label = 'Device', \
-                                editor = EnumEditor(name='_available_devices_map'), \
-                                enabled_when='not running'), Item('rescan_button', enabled_when='not running', show_label = False)),
-                            Item('identify_button', enabled_when = 'selected_device != \'\'', label = 'Identify'),
-                            label = 'Instrument', show_border=True),
+    traits_view = View(Group(HGroup(Item('selected_device', label = 'Device',
+                                         editor = EnumEditor(name='_available_devices_map'),
+                                         enabled_when='not running'),
+                                    Item('rescan_button', enabled_when='not running', show_label = False)
+                                    ),
+                             Item('identify_button', enabled_when = 'selected_device != \'\'', label = 'Identify'),
+                             label = 'Instrument', show_border=True),
                         Group(Item('start_voltage', enabled_when='not running'),
                             Item('step_voltage', enabled_when='not running'),
                             Item('stop_voltage', enabled_when='not running'),
@@ -170,8 +172,8 @@ class SourceMeter(HasTraits):
             return
         self.sample_nr += 1
         d = dict()
-        values = self.instrument.query_ascii_values('*STB?')
-
+        resp = self.instrument.query_ascii_values('*STB?')
+        values = [float(f) for f in resp.split()]
         if int(values[0]) ^ 64 == 1:
             self.current_limit_exceeded = True
 

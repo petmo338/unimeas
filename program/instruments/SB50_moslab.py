@@ -1,6 +1,6 @@
 import logging
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
-    List, Unicode, Str, Int, on_trait_change, Event, Button
+    List, Unicode, Str, Int, on_trait_change, Event, Button, Float
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
 import traits.has_traits
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class CallbackTask(Task, HasTraits):
     INPUT_CHANNEL = 'ai0'
-    HEATER_CONTROL_CHANNEL = 'port0/Line0:3'
+    HEATER_CONTROL_CHANNEL = 'port1/Line0:3'
 #    INPUT_TASK_NAME = 'InputTask'
     output = List
     sample_number = Int(0)
@@ -99,7 +99,7 @@ class NI6215_MOSLab(HasTraits):
     CHANNEL_CELL_WIDTH = 25.0
 
 
-    sampling_interval = Range(0.05, 10, 1)
+
     start_stop = Event
     refresh_list = Button
     ai0 =Bool(True)
@@ -126,13 +126,12 @@ class NI6215_MOSLab(HasTraits):
     acquired_data = List(Dict)
     _available_devices_map = Dict(Unicode, Unicode)
     selected_device = Str
-    parameter_group = Group(
-        Item('sampling_interval', enabled_when='not running'),
-        show_border = True)
+    actual_voltage = Float
+    sample_number = Int
 
-    traits_view = View(
-                        parameter_group,
-                        HGroup(Label('Device: '), Item('selected_device', \
+
+
+    traits_view = View(HGroup(Label('Device: '), Item('selected_device', \
                         show_label = False,
                             editor = EnumEditor(name='_available_devices_map'), \
                             enabled_when='not running'),
@@ -156,8 +155,12 @@ class NI6215_MOSLab(HasTraits):
                         #Item('ai15', enabled_when='not running', springy = True, width = CHANNEL_CELL_WIDTH))\
                         ))), \
                         Item('start_stop', label = 'Start/Stop Acqusistion',
-                                editor = ButtonEditor(label_value='button_label')),\
-                                handler=NI6215Handler)
+                                editor = ButtonEditor(label_value='button_label')),
+                       Group(
+                           Item('actual_voltage', style='readonly', label='Actual Voltage [V]', format_str='%.4f'),
+                           Item('sample_number', style='readonly'),
+                           show_border=True),
+                       handler=NI6215Handler)
 
     def __init__(self):
         self.on_trait_change(self.add_data, 'acqusition_task.output')
@@ -211,6 +214,8 @@ class NI6215_MOSLab(HasTraits):
         if len(data) < 18:
             return
         d = dict()
+        self.sample_number += 1
+        self.actual_voltage = data[2]
         for i, enabled in enumerate(self.enabled_channels):
 
             d[self.output_channels[i]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
@@ -235,6 +240,7 @@ class NI6215_MOSLab(HasTraits):
             self.acqusition_task.HEATER_CONTROL_CHANNEL = 'port1/line0:3'
         self.acqusition_task.setup(self.selected_device)
         self.acqusition_task.StartTask()
+        self.sample_number = 0
 
     def stop(self):
         logger.info('stop()')

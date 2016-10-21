@@ -17,13 +17,15 @@ import csv
 logger = logging.getLogger(__name__)
 
 
-PID_configurations = {  'Normal TO-8': {'P': 5.821729083089657, 'I': 1.626933965977756, 'D': 1.332938348953647, 'N': 1.448274562118016, 'pwm_table_index': 0},
-                        'Sensic M18 ceramic': {'P': 9.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 1},
-                        'L-A Cap': {'P': 8.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0},
-                        'Small mass': {'P': 2.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0}}
+PID_configurations = {'Normal TO-8': {'P': 13.7522446115953, 'I': 1.88099289838085, 'D': 0, 'N': 0, 'pwm_table_index': 0},
+                      'Sensic M18 ceramic': {'P': 9.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 1},
+                      'L-A Cap': {'P': 8.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0},
+                      'Small mass': {'P': 2.56699386091245, 'I': 6.07629935945335, 'D': 1.98583413086793, 'N': 37.8230336021021, 'pwm_table_index': 0}}
 
 BAUD_RATE = 115200
-POLL_INTERVAL = 200.0
+POLL_INTERVAL = 100.0
+QUEUE_LENGHT = 30
+
 def open_port(port, timeout):
     com = serial.Serial()
     com.port = port
@@ -36,8 +38,10 @@ def open_port(port, timeout):
     com.open()
     return com
 
+
 def temp_to_resistance(temp, resistance_at_RT = 109.7):
     return (100.0 * (resistance_at_RT/109.7)) * (1 + (3.908e-3 * temp) + (-5.775e-7 * temp * temp))
+
 
 def resistance_to_temp(resistance, resistance_at_RT = 109.7):
     R0 = (100.0 * (resistance_at_RT/109.7))
@@ -47,8 +51,9 @@ def resistance_to_temp(resistance, resistance_at_RT = 109.7):
         return 999
     return (-R0*a + sqrt(R0*R0*a*a-4*R0*b*(R0-resistance)))/(2*R0*b)
 
+
 class SerialHandler(threading.Thread):
-    BAUD_RATE = 115200
+
     response_unpack_format = '<2f3B7f'
     exit_flag = False
     is_connected = False
@@ -58,6 +63,7 @@ class SerialHandler(threading.Thread):
         self.set_parameters_queue = set_parameters_queue
         self.get_parameters_queue = get_parameters_queue
         self.selected_com_port = selected_com_port
+        self.log_start_time = time()
 
     def open_port(self):
         try:
@@ -79,13 +85,13 @@ class SerialHandler(threading.Thread):
 
     def run(self):
         while not self.exit_flag:
-            sleep(POLL_INTERVAL / 1000.0)
+            # sleep(POLL_INTERVAL / 1000.0)
             self.ser.write('a')
             response = self.ser.read(struct.calcsize(self.response_unpack_format))
             if len(response) == struct.calcsize('<2f3B7f'):
                 values = struct.unpack('<2f3B7f', response)
                 try:
-                    self.get_parameters_queue.put_nowait(values)
+                    self.get_parameters_queue.put_nowait(values + (time() - self.log_start_time,))
                 except Queue.Full:
                     logger.debug('Queue full')
                     pass
@@ -199,6 +205,10 @@ class TemperatureControlPanel(HasTraits):
     use_direct_pwm = Bool(False)
     pwm_set_direct = Int(0)
 
+    use_direct_pv = Bool(False)
+    pv_set_direct = Int(0)
+
+
     temp_setpoint = Float
     resistance_setpoint = Float
     supply_voltage_setpoint = Float(15.0)
@@ -273,6 +283,7 @@ class TemperatureControlPanel(HasTraits):
                 VGroup(Item('pid_N', label='PID Nd',  format_str='%.7f')),
                 VGroup(Item('pwm_table_index', label='tbl_idx')),
                 HGroup(Item('use_direct_pwm'), Item('pwm_set_direct', show_label=False)),
+                HGroup(Item('use_direct_pv'), Item('pv_set_direct', show_label=False)),
                 Item('update_pid', enabled_when='connected'),
                 Item('save_detailed_log', enabled_when='connected'),
                 label='PID parameters - Don\'t touch', show_border=True,
@@ -282,10 +293,10 @@ class TemperatureControlPanel(HasTraits):
     )
 
     def _set_parameters_queue_default(self):
-        return Queue.Queue(2)
+        return Queue.Queue(QUEUE_LENGHT)
 
     def _get_parameters_queue_default(self):
-        return Queue.Queue(2)
+        return Queue.Queue(QUEUE_LENGHT)
 
     def _temp_setpoint_changed(self, new):
         self.resistance_setpoint = temp_to_resistance(new, self.RT_resistance_setpoint)
@@ -293,6 +304,7 @@ class TemperatureControlPanel(HasTraits):
     def _connected_changed(self, new):
         if new is True:
             self.connect_button_string = 'Disconnect'
+            self._selected_pid_configuration_changed(self.selected_pid_configuration)
             self.update_PID_values = 3
         else:
             self.connect_button_string = 'Connect'
@@ -315,6 +327,9 @@ class TemperatureControlPanel(HasTraits):
         self.pid_D = PID_configurations[new]['D']
         self.pid_N = PID_configurations[new]['N']
         self.pwm_table_index = PID_configurations[new]['pwm_table_index']
+
+    def _selected_pid_configuration_default(self):
+        return 'Normal TO-8'
 
     def _available_pid_configurations_default(self):
         return PID_configurations.keys()
@@ -359,7 +374,7 @@ class TemperatureControlPanel(HasTraits):
                 self.pid_D = values[10]
                 self.pid_N = values[11]
             if self.save_detailed_log:
-                self.csv_writer.writerow(values + (time() - self.log_start_time,))
+                self.csv_writer.writerow(values)
 
     def _table_entries_default(self):
         return [TableEntry(time = 15, start_temp = 150, end_temp = 150, remaining = -1),
@@ -469,8 +484,8 @@ class TemperatureControlPanel(HasTraits):
     def _update_pid_fired(self):
         self.set_parameters_queue.put_nowait(struct.pack('<c4f', 'p', self.pid_P, self.pid_I, self.pid_D, self.pid_N))
         self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 
-            int(self.use_direct_pwm), 0, self.pwm_set_direct, self.pwm_table_index, self.resistance_setpoint, 
-            self.supply_voltage_setpoint, self.RT_resistance_setpoint, 0, 0))
+            int(self.use_direct_pwm), int(self.use_direct_pv), self.pwm_set_direct, self.pwm_table_index, self.resistance_setpoint,
+            self.supply_voltage_setpoint, self.RT_resistance_setpoint, 0, self.pv_set_direct))
         self.update_PID_values = 3
 
     def _connect_fired(self):
@@ -479,7 +494,7 @@ class TemperatureControlPanel(HasTraits):
                     self.selected_com_port)
             if not self.serial_handler.open_port():
                 return
-            self.poll_timer = Timer(POLL_INTERVAL/2, self._poll_queue)
+            self.poll_timer = Timer(POLL_INTERVAL, self._poll_queue)
             self.serial_handler.start()
             self.connected = True
         else:

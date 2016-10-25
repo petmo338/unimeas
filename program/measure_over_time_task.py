@@ -9,7 +9,7 @@ from . sql_panel import SQLPanel
 from . gasmixer_panel_2 import GasMixerPanel
 from . gpio_panel import GPIOPanel
 from . plot_panel import PlotPanel
-from . temperature_control_panel import TemperatureControlPanel
+from . temperature_control_panel_2 import TemperatureControlPanel
 from . instrument_show_group import InstrumentShowGroup
 # import pdb
 import logging

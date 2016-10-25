@@ -154,7 +154,7 @@ class PyBoardSerial(HasTraits):
                     {self.x_units[0]: self.sample_nr, self.x_units[1]: measurement_time}),
                     dict({self.y_units[0]: nox_ppm}))
         self.acquired_data.append(dict_data)
-        self.timer = Timer.singleShot(self.sample_interval * 1000 - (time() - self.acq_start_time - measurement_time
+        self.timer = Timer.singleShot(self.sample_interval * 1000 - (time() - self.acq_start_time - measurement_time))
 
     def start(self):
         self.running = True

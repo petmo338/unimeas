@@ -350,7 +350,7 @@ class TemperatureControlPanel(HasTraits):
         self.pwm_table_index = PID_configurations[new]['pwm_table_index']
 
     def _available_pid_configurations_default(self):
-        return PID_configurations.keys()
+        return list(PID_configurations.keys())
 
     def _on_timer(self):
         self.current_time = time() - self.start_time

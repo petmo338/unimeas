@@ -3,7 +3,7 @@ from traits.api import HasTraits, Bool, Instance, Button, List, \
 from traitsui.api import EnumEditor, Item, View, HGroup, VGroup, spring, Handler
 from traitsui.menu import OKButton, CancelButton
 from generic_popup_message import GenericPopupMessage
-from database import SessionManager
+from database.session_manager import SessionManager
 import time
 import logging
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class SQLPanel(HasTraits):
     measurement_name = Str
     measurement_description = Str
     save_in_database = Bool(False)
-
+    session_manager = Instance(SessionManager)
 
     running = Bool
 
@@ -60,22 +60,27 @@ class SQLPanel(HasTraits):
                             enabled_when = 'not running and save_in_database'),
                         Item('measurement_description', style = 'custom')))
 
-    def _new_measurement_fired(self):
-        popup = CreateMeasurementPopup()
-        ui = popup.edit_traits()
-        if ui.result is True:
-            self.is_new = True
-            self.available_measurements.append(popup.measurement_name)
-            self.measurement_name = popup.measurement_name
-            self.measurement_description = popup.measurement_description
-            self.database_wrapper.set_table(self.measurement_name,
-                    self.measurement_description)
+    def __init__(self):
+        self.session_manager = SessionManager('postgresql://sensor:sensor@applsens.sensor.lab:5432/unimeas')
+        super(SQLPanel, self).__init__()
+
+    # def _new_measurement_fired(self):
+    #     popup = CreateMeasurementPopup()
+    #     ui = popup.edit_traits()
+    #     if ui.result is True:
+    #         self.is_new = True
+    #         self.available_measurements.append(popup.measurement_name)
+    #         self.measurement_name = popup.measurement_name
+    #         self.measurement_description = popup.measurement_description
+    #         self.database_wrapper.set_table(self.measurement_name,
+    #                 self.measurement_description)
 
 
 
 
     def _available_users_default(self):
-        return []
+        return self.session_manager.get_users()
+
 
     def _measurement_name_default(self):
         return ''
@@ -91,28 +96,6 @@ class SQLPanel(HasTraits):
 
         self.database_wrapper.set_table(new, self.measurement_description)
 
-    def _selected_user_changed(self, old, new):
-        if new == '':
-            self.save_in_database = False
-        else:
-            self.save_in_database = True
-            if not self.database_wrapper.change_database(new):
-                logger.error('Unable to connect to database %s', new)
-                self.save_in_database = False
-                self.available_measurements = []
-                return
-            self.available_measurements = self.database_wrapper.get_measurements()
-            self.available_measurements.insert(0, '')
-
-
-    def _save_in_database_changed(self, new):
-        if new:
-            self.database_wrapper = SQLWrapper()
-            self.available_users = self.database_wrapper.get_users()
-        else:
-            del self.database_wrapper
-            self.available_users = []
-
 #    @on_trait_change('instrument.sample_number')
     def add_data(self, data):
         if self.save_in_database:
@@ -122,10 +105,12 @@ class SQLPanel(HasTraits):
     def start_stop(self, active_instrument):
         self.running = active_instrument.running
         if self.running and self.save_in_database:
-            if len(self.measurement_name) == 0:
-                GenericPopupMessage(message = 'No measurement selected').edit_traits()
-                self.save_in_database = False
-            else:
+            if self.measurement_session is None:
+                self.measurement_session = self.session_manager.create_session(name='some name', instrument='some isnstr.',
+                                                                               user=self.selected_user, description='some desc',
+                                                                               sensor_id='sensor ID', gasmixer_system='GM2',
+                                                                               measurement_class='meas class fix')
+            self.measurement_session.new_run
                 if self.database_wrapper.get_description(self.measurement_name) is not self.measurement_description:
                             self.database_wrapper.set_table(self.measurement_name, self.measurement_description)
                 self.database_wrapper.add_columns([active_instrument.x_units[0] +active_instrument.sweep_name,\

@@ -7,10 +7,17 @@ import csv
 import time
 import logging
 import tempfile
-import pg8000
+
 import ConfigParser
 
 logger = logging.getLogger(__name__)
+try:
+    import pg8000
+except ImportError as e:
+    logger.warning(e)
+    USE_PGSQL = False
+else:
+    USE_PGSQL = True
 
 try:
     from influxdb import InfluxDBClient
@@ -19,8 +26,6 @@ except ImportError as e:
     USE_INFLUX_DB_LOGGING = False
 else:
     USE_INFLUX_DB_LOGGING = True
-
-
 
 TABLE_NAME_PREPEND = 'm'
 DATABASE_SERVER_HOST = 'pc15389.sensor.lab'
@@ -177,7 +182,7 @@ class SQLWrapper():
 
 class SQLPanel(HasTraits):
 
-    ############ Panel Interface ###########################3
+    """############ Panel Interface ###########################3"""
 
     pane_name = Str('Save Configuration')
     pane_id = Str('sensorscience.unimeas.sql_pane')
@@ -196,19 +201,21 @@ class SQLPanel(HasTraits):
     available_users = List(Unicode)
     available_measurements = List(Unicode)
 
-
-    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when = 'not running'),
-                            Item('selected_user',
-                            editor=EnumEditor(name='available_users'),
-                            enabled_when = 'not running and save_in_database'), spring,
-                        Item('new_measurement', show_label=False,  enabled_when = 'not running and save_in_database')),
-                        Item('measurement_name',
-                            editor=EnumEditor(name='available_measurements'),
-                            enabled_when = 'not running and save_in_database'),
-                        Item('measurement_description', enabled_when = 'False', style = 'custom'),
-                        Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
-                        #Item('filename', enabled_when = 'not running and save_to_file'),
-                        Item('filename',  style='simple', editor = FileEditor(dialog_style = 'save', filter = ['*.csv']))))
+    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when='USE_PGSQL and not running'),
+                                     Item('selected_user', editor=EnumEditor(name='available_users'),
+                                          enabled_when='not running and save_in_database'),
+                                     spring,
+                                     Item('new_measurement', show_label=False,
+                                          enabled_when='not running and save_in_database')),
+                              Item('measurement_name', editor=EnumEditor(name='available_measurements'),
+                                   enabled_when='not running and save_in_database'),
+                              Item('measurement_description', enabled_when='False', style='custom'),
+                              Item('save_to_file', label = 'Save to file (.csv)', enabled_when='not running'),
+                              Item('filename',  style='simple', editor=FileEditor(dialog_style='save',
+                                                                                  filter=['*.csv'])
+                                   )
+                              )
+                       )
 
     def _new_measurement_fired(self):
         popup = CreateMeasurementPopup()
@@ -284,7 +291,7 @@ class SQLPanel(HasTraits):
             except ConfigParser.NoSectionError as e:
                 system = 'SystemNoSet'
                 logger.warning('No preferences.ini found: %s', e)
-            d={}
+            d = {}
             for v in data.values():
                 d.update(v[1])
             influx = [{
@@ -301,16 +308,17 @@ class SQLPanel(HasTraits):
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
 
-
-
     def start_stop(self, running):
+        global USE_INFLUX_DB_LOGGING
         self.running = running
         if running:
             if USE_INFLUX_DB_LOGGING:
                 try:
-                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
+                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD,
+                                                      INFLUX_DB_DATABASE, False, False, 0.2)
                 except Exception as e:
                     logger.warning('Real time plot connection failed: %s', e)
+                    USE_INFLUX_DB_LOGGING = False
 
             self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
             logger.info('Backup measurement log: %s', self.backup_log_file.name)

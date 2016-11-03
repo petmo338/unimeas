@@ -1,6 +1,4 @@
-import zmq
 import logging
-logger = logging.getLogger(__name__)
 from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, Tuple
 from traitsui.api import Item, View, Handler, ButtonEditor,  HGroup, spring, Label
 from pyface.timer.api import Timer
@@ -10,6 +8,8 @@ logger = logging.getLogger(__name__)
 UPDATE_INTERVAL = 500
 CONNECT_TIMEOUT = 5000
 POLL_TIMEOUT = 10
+
+
 class State:
     DISCONNECTED = 1
     CONNECTING = 2
@@ -18,12 +18,13 @@ class State:
     RUNNING = 5
     STOPPING = 6
 
-    strings = dict({DISCONNECTED:'Disconnected',
-                    CONNECTING:'Connecting',
-                    CONNECTED:'Connected',
-                    STARTING:'Starting',
-                    RUNNING:'Running',
-                    STOPPING:'Stopping'})
+    strings = {DISCONNECTED: 'Disconnected',
+               CONNECTING: 'Connecting',
+               CONNECTED: 'Connected',
+               STARTING: 'Starting',
+               RUNNING: 'Running',
+               STOPPING: 'Stopping'}
+
 
 class GasMixerPanelHandler(Handler):
 
@@ -31,16 +32,17 @@ class GasMixerPanelHandler(Handler):
         """ Handles a dialog-based user interface being closed by the user.
         Overridden here to stop the timer once the window is destroyed.
         """
-        info.object.timer.Stop()
+        if info.object.timer is not None:
+            info.object.timer.Stop()
         return
+
 
 class GasMixerPanel(HasTraits):
 
-    ############ Panel Interface ###########################3
+    """"########### Panel Interface ###########################"""
 
     pane_name = Str('Gasmixer control')
     pane_id = Str('sensorscience.unimeas.gasmixer_pane')
-
 
     running = Bool(False)
     timer = Instance(Timer)
@@ -57,21 +59,19 @@ class GasMixerPanel(HasTraits):
     state = Int(State.DISCONNECTED)
     connect_timeout = Int(0)
 
-    traits_view = View(Item('control_gasmixer', label = 'Follow Start/Stop from GasMixer', enabled_when = 'state is 3'),
-                        Item('current_column_int', label = 'Curr. column'),
-                        Item('running_label', label = 'State', style='readonly'),
-                            handler = GasMixerPanelHandler)
+    traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
+                       Item('current_column_int', label='Curr. column'),
+                       Item('running_label', label='State', style='readonly'),
+                       handler=GasMixerPanelHandler)
 
     def _onTimer(self):
-
-
         socks = dict(self.subscriber_poller.poll(POLL_TIMEOUT))
         if self.subscriber in socks and socks[self.subscriber] == zmq.POLLIN:
             msg = self.subscriber.recv()
             self.connect_timeout = 0
             if msg.find('NEWCOL') != -1:
-                self.current_column = ({self.x_units[0]:0}, \
-                    {self.y_units[0]:int(msg.strip('NEWCOL '))})
+                self.current_column = ({self.x_units[0]:0},
+                                       {self.y_units[0]:int(msg.strip('NEWCOL '))})
             elif msg.find('STOP') != -1:
                 if self.control_gasmixer:
                     if self.active_instrument.running is True:
@@ -94,6 +94,11 @@ class GasMixerPanel(HasTraits):
             self.running_label = 'GasMixer ' + State.strings[self.state]
 
     def __init__(self, **traits):
+        try:
+            import zmq
+        except ImportError as e:
+            logger.warning(e)
+            return
         super(GasMixerPanel, self).__init__(**traits)
         self.context = zmq.Context.instance()
 
@@ -102,16 +107,14 @@ class GasMixerPanel(HasTraits):
         self.subscriber.setsockopt(zmq.SUBSCRIBE, "")
         self.subscriber_poller = zmq.Poller()
         self.subscriber_poller.register(self.subscriber, zmq.POLLIN)
-
         self.state = State.DISCONNECTED
-
         self.timer = Timer(UPDATE_INTERVAL, self._onTimer)
 
     def _current_column_changed(self, old, new):
         self.current_column_int = new[1][self.y_units[0]]
 
     def _current_column_default(self):
-        return ({self.x_units[0]:0},{self.y_units[0]:0})
+        return {self.x_units[0]: 0}, {self.y_units[0]:0}
 
     def _running_label_default(self):
         return 'GasMixer ' + State.strings[self.state]

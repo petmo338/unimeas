@@ -2,7 +2,13 @@ import logging
 from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, Tuple
 from traitsui.api import Item, View, Handler, ButtonEditor,  HGroup, spring, Label
 from pyface.timer.api import Timer
-
+try:
+    import zmq
+except ImportError as e:
+    logger.warning(e)
+    USE_ZMQ = False
+else:
+    USE_ZMQ = True
 logger = logging.getLogger(__name__)
 
 UPDATE_INTERVAL = 500
@@ -94,10 +100,7 @@ class GasMixerPanel(HasTraits):
             self.running_label = 'GasMixer ' + State.strings[self.state]
 
     def __init__(self, **traits):
-        try:
-            import zmq
-        except ImportError as e:
-            logger.warning(e)
+        if USE_ZMQ is False:
             return
         super(GasMixerPanel, self).__init__(**traits)
         self.context = zmq.Context.instance()

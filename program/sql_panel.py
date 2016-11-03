@@ -11,7 +11,6 @@ import tempfile
 import ConfigParser
 
 logger = logging.getLogger(__name__)
-
 try:
     import pg8000
 except ImportError as e:
@@ -27,7 +26,6 @@ except ImportError as e:
     USE_INFLUX_DB_LOGGING = False
 else:
     USE_INFLUX_DB_LOGGING = True
-    
     
 
 TABLE_NAME_PREPEND = 'm'
@@ -294,7 +292,7 @@ class SQLPanel(HasTraits):
             except ConfigParser.NoSectionError as e:
                 system = 'SystemNoSet'
                 logger.warning('No preferences.ini found: %s', e)
-            d={}
+            d = {}
             for v in data.values():
                 d.update(v[1])
             influx = [{
@@ -310,10 +308,9 @@ class SQLPanel(HasTraits):
                 logger.warning('%s', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
-        
-
 
     def start_stop(self, running):
+        global USE_INFLUX_DB_LOGGING
         self.running = running
         if running:
             if USE_INFLUX_DB_LOGGING:

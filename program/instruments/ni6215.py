@@ -251,7 +251,7 @@ class NI6215(HasTraits):
             if len(d) > 0:
                 PyDAQmx.DAQmxGetDevProductType(d, s, len(s))
                 (a,b,c) = s.partition('\x00')
-                if a.startswith('USB-62'):
+                if a.startswith('USB-6'):
                     PyDAQmx.DAQmxGetDevSerialNum(d, serial)
                     devices.append((d, a + ' - ' + hex(serial.value)[2:-1].upper()))
                 if a.startswith('PCI-'):

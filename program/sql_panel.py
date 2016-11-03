@@ -19,8 +19,8 @@ except ImportError as e:
     USE_INFLUX_DB_LOGGING = False
 else:
     USE_INFLUX_DB_LOGGING = True
-    
-    
+
+
 
 TABLE_NAME_PREPEND = 'm'
 DATABASE_SERVER_HOST = 'pc15389.sensor.lab'
@@ -300,7 +300,7 @@ class SQLPanel(HasTraits):
                 logger.warning('%s', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
-        
+
 
 
     def start_stop(self, running):
@@ -311,7 +311,7 @@ class SQLPanel(HasTraits):
                     self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
                 except Exception as e:
                     logger.warning('Real time plot connection failed: %s', e)
-                    
+
             self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
             logger.info('Backup measurement log: %s', self.backup_log_file.name)
             self.backup_csv_writer = csv.writer(self.backup_log_file, quoting=csv.QUOTE_NONNUMERIC)
@@ -330,7 +330,8 @@ class SQLPanel(HasTraits):
                 except IOError:
                     logger.error('Unable to open file %s', self.filename)
                 else:
-                    self.csv_writer = csv.writer(self.filehandle, quoting=csv.QUOTE_NONNUMERIC)
+                    self.csv_writer = csv.writer(self.filehandle,
+                        lineterminator='\n', quoting=csv.QUOTE_NONNUMERIC)
                     self.csv_writer.writerow(self.column_names)
                 self.column_names = self.column_names
         else:

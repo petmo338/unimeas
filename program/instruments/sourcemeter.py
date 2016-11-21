@@ -256,7 +256,8 @@ class SourceMeter(HasTraits):
         self.sample_number = 0
 
         if self.running:
-            self.timer = Timer.singleShot((self.sample_number+1) * self.sampling_interval - (time()-self.start_time),
+            self.timer = Timer.singleShot(((self.sample_number+1) * self.sampling_interval -
+                                           (time()-self.start_time))*1000,
                                           self._on_timer)
 
     def stop(self):
@@ -299,8 +300,9 @@ class SourceMeter(HasTraits):
             self.dispatch_data(data)
 
         if self.running:
-            self.timer = Timer.singleShot((self.sample_number + 1) * self.sampling_interval -
-                                          (time() - self.start_time), self._on_timer)
+            self.timer = Timer.singleShot(((self.sample_number+1) * self.sampling_interval -
+                                           (time()-self.start_time))*1000,
+                                          self._on_timer)
 
     def dispatch_data(self, data):
         d = dict()

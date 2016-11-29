@@ -43,3 +43,6 @@ Agllent interval don't correctly interpret sample interval
 [OK]Current limit in IV is 2.5A max. Check?!
 
 Check for plot stop at 172K datapoints
+
+
+Degree sign in legend makes it impossible to save

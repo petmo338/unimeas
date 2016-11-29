@@ -278,10 +278,13 @@ class SQLPanel(HasTraits):
                             break
                         data_list[column_index] = data[channel][1][column[len(channel):]]
 
-        if self.save_to_file:
-            self.csv_writer.writerow(data_list)
         if hasattr(self, 'backup_csv_writer'):
             self.backup_csv_writer.writerow(data_list)
+        try:
+            if hasattr(self, 'csv_writer'):
+                self.csv_writer.writerow(data_list)
+        except ValueError as e:
+            logger.warning(e)
 
     def add_data(self, data):
         self.write_to_file(data)
@@ -334,17 +337,21 @@ class SQLPanel(HasTraits):
                         self.measurement_description)
             if self.save_to_file:
                 try:
-                    self.filehandle = open(self.filename, "a", 1)
+                    self.filehandle = open(self.filename, 'a', 1)
                 except IOError:
                     logger.error('Unable to open file %s', self.filename)
+                    GenericPopupMessage(message = 'Invalid filename. Stop measurement and fix').edit_traits()
                 else:
                     self.csv_writer = csv.writer(self.filehandle,
                         lineterminator='\n', quoting=csv.QUOTE_NONNUMERIC)
                     self.csv_writer.writerow(self.column_names)
+                    logger.warning('Using ' + self.filename + 'for measurement log.')
                 self.column_names = self.column_names
         else:
-            if self.save_to_file:
-                self.filehandle.close()
+            if hasattr(self, 'csv_writer'):
+                self.filehandle.flush()
+            if hasattr(self, 'backup_csv_writer'):
+                self.backup_log_file.flush()
 #        if not running and self.save_to_file:
 #            del self.csv_writer
 

@@ -513,7 +513,8 @@ class TemperatureControlPanel(HasTraits):
         filehandle = open(self.filename, "w", 1)
         fieldnames = self.table_entries[0].trait_get().keys()
         csv_writer = csv.DictWriter(filehandle, fieldnames=fieldnames, delimiter=',',
-                                    quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+                                    quotechar='"', quoting=csv.QUOTE_NONNUMERIC,
+                                    lineterminator='\n')
         csv_writer.writeheader()
         for row in self.table_entries:
             csv_writer.writerow(row.trait_get())
@@ -523,14 +524,14 @@ class TemperatureControlPanel(HasTraits):
         if self.filename is '':
             GenericPopupMessage(message='No filename given').edit_traits()
             return
-        filehandle = open(self.filename, "r", 1)
-        reader = csv.DictReader(filehandle)
+        filehandle = open(self.filename, 'rU', 1)
+        reader = csv.DictReader(filehandle, lineterminator='\n')
         self.table_entries = []
         for row in reader:
             self.table_entries.append(TableEntry(time = int(row['time']),
-                                                 start_temp=nt(row['start_temp']),
-                                                 end_temp=int(row['end_temp']),
-                                                 remaining=int(row['time'])))
+                                                start_temp=int(row['start_temp']),
+                                                end_temp=int(row['end_temp']),
+                                                remaining=int(row['time'])))
         filehandle.close()
 
     def _set_temp_table_for_calibration(self):

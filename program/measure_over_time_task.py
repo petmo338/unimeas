@@ -165,8 +165,6 @@ class MeasureOverTimeTask(Task):
             from instruments.time_boonton7200 import Boonton7200
         except ImportError as e:
             logger.info('Error on import: %s, %s', type(e), e.message)
-        #except WindowsError:
-        #    pass
         else:
             instruments.append(Boonton7200())
 
@@ -174,10 +172,16 @@ class MeasureOverTimeTask(Task):
             from instruments.time_agilent_4284 import Agilent4284
         except Exception as e:
             logger.info('Error on import: %s, %s', type(e), e.message)
-        #except WindowsError:
-        #    pass
         else:
             instruments.append(Agilent4284())
+
+
+        try:
+            from instruments.ad7451a import ad7451a
+        except Exception as e:
+            logger.info('Error on import: %s, %s', type(e), e.message)
+        else:
+            instruments.append(ad7451a())
 
         return instruments
 

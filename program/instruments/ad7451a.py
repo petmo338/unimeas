@@ -40,8 +40,8 @@ class ad7451a(HasTraits):
                                  'CURR:AC': 'Current AC', 'FREQ': 'Frequency',
                                  'TEMP': 'Temperature'})
     x_units = Dict({0: 'SampleNumber', 1: 'Time'})
-    y_units = Dict({0: 'Resistance', 1: 'Voltage', 2: 'Current',
-           3: 'Frequency', 4: 'Temp'})
+    y_units = Dict({0: 'Voltage', 1: 'Resistance', 2: 'Current',
+                    3: 'Frequency', 4: 'Temp'})
     acq_value = Float
     measurement_time = Float
     acq_start_time = Float

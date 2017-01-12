@@ -106,21 +106,21 @@ class MeasureOverTimeTask(Task):
         try:
             from instruments.blank import Blank
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Blank())
 
         try:
             from instruments.dummysourcemetertime import DummySourcemeterTime
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(DummySourcemeterTime())
 
         try:
             from instruments.sourcemeter import SourceMeter
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         #except WindowsError:
         #    pass
         else:
@@ -129,59 +129,65 @@ class MeasureOverTimeTask(Task):
         try:
             from instruments.ni6215 import NI6215
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(NI6215())
 
         try:
             from instruments.SB50_moslab import NI6215_MOSLab
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(NI6215_MOSLab())
 
         try:
             from instruments.TGS2442_moslab import TGS2442_MOSLab
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(TGS2442_MOSLab())
         
         try:
             from instruments.sensic_cu import SenSiCCU
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(SenSiCCU())
 
         try:
             from instruments.K2100 import K2100
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(K2100())
 
         try:
             from instruments.time_boonton7200 import Boonton7200
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Boonton7200())
 
         try:
             from instruments.time_agilent_4284 import Agilent4284
         except Exception as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Agilent4284())
-
 
         try:
             from instruments.ad7451a import ad7451a
         except Exception as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(ad7451a())
+
+        try:
+            from instruments.pyboard_serial import PyBoardSerial
+        except Exception as e:
+            logger.warning('Error on import: %s, %s', type(e), e.message)
+        else:
+            instruments.append(PyBoardSerial())
 
         return instruments
 

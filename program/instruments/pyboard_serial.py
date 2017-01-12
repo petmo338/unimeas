@@ -20,10 +20,11 @@ class SerialHandler(threading.Thread):
     exit_flag = False
     is_connected = False
     ser = Instance(serial.Serial)
+    lock = threading.Lock()
+    values = (0, 0, 0)
 
-    def __init__(self, get_parameters_queue, selected_com_port):
+    def __init__(self, selected_com_port):
         threading.Thread.__init__(self)
-        self.get_parameters_queue = get_parameters_queue
         self.ser = selected_com_port
 
     def run(self):
@@ -31,11 +32,13 @@ class SerialHandler(threading.Thread):
             sleep(self.POLL_INTERVAL / 1000.0)
             response = self.ser.read(struct.calcsize(self.RESPONSE_UNPACK_FORMAT))
             if len(response) == struct.calcsize(self.RESPONSE_UNPACK_FORMAT):
-                values = struct.unpack(self.RESPONSE_UNPACK_FORMAT, response)
-                try:
-                    self.get_parameters_queue.put_nowait(values)
-                except queue.Full:
-                    logger.debug('Queue full')
+                self.lock.acquire()
+                self.values = struct.unpack(self.RESPONSE_UNPACK_FORMAT, response)
+                self.lock.release()
+                # try:
+                #     self.get_parameters_queue.put_nowait(values)
+                # except queue.Full:
+                #     logger.debug('Queue full')
         logger.info('Stopping serial thread')
 
 
@@ -54,10 +57,10 @@ class PyboardHandler(Handler):
             if info.object.serialport.isOpen():
                 info.object.serialport.close()
 
-        while not info.object.get_parameters_queue.empty():
-            info.object.get_parameters_queue.get()
-            info.object.get_parameters_queue.task_done()
-        info.object.get_parameters_queue.join()
+        # while not info.object.get_parameters_queue.empty():
+        #     info.object.get_parameters_queue.get()
+        #     info.object.get_parameters_queue.task_done()
+        # info.object.get_parameters_queue.join()
 
 
 class PyBoardSerial(HasTraits):
@@ -84,8 +87,8 @@ class PyBoardSerial(HasTraits):
     enabled_channels = List(Bool)
     acq_start_time = Float
     sample_nr = Int
-    get_parameters_queue = Instance(queue.Queue)
-    sample_interval = Float(1)
+    # get_parameters_queue = Instance(queue.Queue)
+    sample_interval = Range(0.05, 10, 1)
     serial_out = Str
     serial_handler = Instance(SerialHandler)
     traits_view = View(
@@ -105,30 +108,25 @@ class PyBoardSerial(HasTraits):
             low=0.02, high=60, is_float=True, format="%.3f")),
         handler=PyboardHandler)
 
-    def _get_parameters_queue_default(self):
-        return queue.Queue(256)
+    # def _get_parameters_queue_default(self):
+    #     return queue.Queue(256)
 
     def _enabled_channels_default(self):
         return [True]
 
     def _available_ports_default(self):
         import serial.tools.list_ports as lp
+        logger.info([l.device for l in lp.comports()])
         ll = []
-        for p in lp.grep('PyBoard'):
+        for p in lp.grep('F055:9800'):
             ll.append(p.device)
         return ll
 
     def _poll_queue(self):
-        data = []
-        while not self.get_parameters_queue.empty():
-            try:
-                values = self.get_parameters_queue.get_nowait()
-                data.append(values)
-            except queue.Empty:
-                logger.error('No data received from SerialHandler')
-                pass
-            self.get_parameters_queue.task_done()
-        return data[-1]
+        self.serial_handler.lock.acquire()
+        retval = self.serial_handler.values
+        self.serial_handler.lock.release()
+        return retval
 
     def _refresh_list_fired(self):
         self.available_ports = self._available_ports_default()
@@ -141,9 +139,6 @@ class PyBoardSerial(HasTraits):
         measurement_time = time() - self.acq_start_time
         if not self.running:
             return
-        if self.get_parameters_queue.empty():
-            self.timer = Timer.singleShot(self.sample_interval * 1000, self.add_data)
-            return
         (nox_ppm, lambda_linear, oxygen_millivolt) = self._poll_queue()
         self.serial_out = str(nox_ppm)
         dict_data = dict()
@@ -154,7 +149,8 @@ class PyBoardSerial(HasTraits):
                     {self.x_units[0]: self.sample_nr, self.x_units[1]: measurement_time}),
                     dict({self.y_units[0]: nox_ppm}))
         self.acquired_data.append(dict_data)
-        self.timer = Timer.singleShot(self.sample_interval * 1000 - (time() - self.acq_start_time - measurement_time))
+        self.timer = Timer.singleShot(max(0, (self.sample_interval * self.sample_nr -
+                                              (time() - self.acq_start_time))*1000), self.add_data)
 
     def start(self):
         self.running = True
@@ -162,14 +158,14 @@ class PyBoardSerial(HasTraits):
         self.sample_nr = 0
         if self.serialport is None:
             try:
-                self.serialport = serial.Serial(self.portname, 115200, timeout=0.2)
+                self.serialport = serial.Serial(self.portname, 115200, timeout=0.045)
             except Exception as e:
                 logger.error(e)
                 self.stop()
                 return
         else:
             self.serialport.open()
-        self.serial_handler = SerialHandler(self.get_parameters_queue, self.serialport)
+        self.serial_handler = SerialHandler(self.serialport)
         self.serial_handler.start()
         self.timer = Timer.singleShot(self.sample_interval * 1000, self.add_data)
 

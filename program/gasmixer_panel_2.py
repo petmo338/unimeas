@@ -38,8 +38,7 @@ class GasMixerPanelHandler(Handler):
         """ Handles a dialog-based user interface being closed by the user.
         Overridden here to stop the timer once the window is destroyed.
         """
-        if info.object.timer is not None:
-            info.object.timer.Stop()
+        info.object.polling = False
         return
 
 
@@ -58,26 +57,29 @@ class GasMixerPanel(HasTraits):
     current_column = Tuple(Dict, Dict)
     current_column_int = Int(0)
 
-    output_channels = Dict({0:'gasmixer'})
+    output_channels = Dict({0: 'gasmixer'})
     control_gasmixer = Bool(False)
     connected = Bool(False)
     running_label = Str
     state = Int(State.DISCONNECTED)
     connect_timeout = Int(0)
+    polling = True
 
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
                        Item('current_column_int', label='Curr. column'),
                        Item('running_label', label='State', style='readonly'),
                        handler=GasMixerPanelHandler)
 
-    def _onTimer(self):
+    def _on_timer(self):
         socks = dict(self.subscriber_poller.poll(POLL_TIMEOUT))
+        logger.info(socks)
         if self.subscriber in socks and socks[self.subscriber] == zmq.POLLIN:
             msg = self.subscriber.recv()
             self.connect_timeout = 0
+            logger.info(msg.decode('UTF8'))
             if msg.find('NEWCOL') != -1:
-                self.current_column = ({self.x_units[0]:0},
-                                       {self.y_units[0]:int(msg.strip('NEWCOL '))})
+                self.current_column = ({self.x_units[0]: 0},
+                                       {self.y_units[0]: int(msg.strip('NEWCOL '))})
             elif msg.find('STOP') != -1:
                 if self.control_gasmixer:
                     if self.active_instrument.running is True:
@@ -93,11 +95,15 @@ class GasMixerPanel(HasTraits):
             elif msg.find('HEARTBEAT') != -1:
                 self.state = State.CONNECTED
                 self.running_label = 'GasMixer ' + State.strings[self.state]
+
+            self.timer = Timer.singleShot(0.01, self._on_timer)
             return
+
         self.connect_timeout += UPDATE_INTERVAL
         if self.connect_timeout > CONNECT_TIMEOUT:
             self.state = State.DISCONNECTED
             self.running_label = 'GasMixer ' + State.strings[self.state]
+        self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
     def __init__(self, **traits):
         if USE_ZMQ is False:
@@ -111,7 +117,7 @@ class GasMixerPanel(HasTraits):
         self.subscriber_poller = zmq.Poller()
         self.subscriber_poller.register(self.subscriber, zmq.POLLIN)
         self.state = State.DISCONNECTED
-        self.timer = Timer(UPDATE_INTERVAL, self._onTimer)
+        self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
     def _current_column_changed(self, old, new):
         self.current_column_int = new[1][self.y_units[0]]
@@ -131,7 +137,7 @@ class GasMixerPanel(HasTraits):
 if __name__ == '__main__':
     l = logging.getLogger()
     console = logging.StreamHandler()
-#    l.addHandler(console)
+    l.addHandler(console)
     l.setLevel(logging.DEBUG)
     l.info('test')
     g = GasMixerPanel()

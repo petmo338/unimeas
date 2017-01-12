@@ -12,7 +12,10 @@ from PyDAQmx.DAQmxConstants import DAQmx_Val_RSE, DAQmx_Val_Volts, \
     DAQmx_Val_GroupByScanNumber, DAQmx_Val_FiniteSamps
 
 from numpy import zeros, array, mean
-import PyDAQmx
+try:
+    import PyDAQmx
+except:
+    raise ImportError
 from ctypes import byref, c_int32, c_uint32
 logger = logging.getLogger(__name__)
 from i_instrument import IInstrument

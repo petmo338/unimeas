@@ -1,0 +1,8 @@
+pyserial
+pg8000
+PyVISA
+pyqtgraph
+PyDAQmx
+traitsui
+envisage
+pyzmq

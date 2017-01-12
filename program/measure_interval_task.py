@@ -103,7 +103,7 @@ class MeasureIntervalTask(Task):
             instruments.append(SourceMeter())
         try:
             from instruments.interval_ni6215 import NI6215
-        except ImportError as e:
+        except (ImportError) as e:
             logger.warning('Unable to import: %s', e)
             pass
         else:

@@ -1,21 +1,22 @@
 from time import sleep
 import logging
-from pyvisa.constants import AccessModes
 from pyvisa.errors import VisaIOError
 logger = logging.getLogger(__name__)
+
 
 class SerialUtil:
     QUERY_DELAY = 0.05
     ID_STRING_LENGTH = 40
     NUMBER_OF_PROBES = 4
     TIMEOUT = 1000
+
     @classmethod
-    def probe(cls, candidates, visa_resource, identifiers, command = '*IDN?'):
+    def probe(cls, candidates, visa_resource, identifiers, command='*IDN?'):
         d = {}
         model = ''
         for instrument in candidates:
             try:
-                temp_inst = visa_resource.open_resource(instrument.resource_name, timeout = cls.TIMEOUT)
+                temp_inst = visa_resource.open_resource(instrument.resource_name, timeout=cls.TIMEOUT)
             except VisaIOError:
                 break
             temp_inst.query_delay = cls.QUERY_DELAY
@@ -35,10 +36,10 @@ class SerialUtil:
         return d
 
     @classmethod
-    def open(cls, resource_name, visa_resource, command = '*IDN?'):
+    def open(cls, resource_name, visa_resource, command='*IDN?'):
         instrument = None
         try:
-            instrument = visa_resource.open_resource(resource_name, timeout = cls.TIMEOUT)
+            instrument = visa_resource.open_resource(resource_name, timeout=cls.TIMEOUT)
         except VisaIOError:
             return None
         instrument.query_delay = cls.QUERY_DELAY

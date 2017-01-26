@@ -9,7 +9,6 @@ from time import time, sleep
 from pyface.timer.api import Timer
 import threading
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +29,14 @@ class SerialHandler(threading.Thread):
     def run(self):
         while not self.exit_flag:
             sleep(self.POLL_INTERVAL / 1000.0)
-            response = self.ser.read(struct.calcsize(self.RESPONSE_UNPACK_FORMAT))
+            try:
+                response = self.ser.read(struct.calcsize(self.RESPONSE_UNPACK_FORMAT))
+            except serial.SerialException:
+                self.is_connected = False
+                self.ser.close()
+                self.exit_flag = True
+                logger.error('Lost connection with COM port')
+
             if len(response) == struct.calcsize(self.RESPONSE_UNPACK_FORMAT):
                 self.lock.acquire()
                 self.values = struct.unpack(self.RESPONSE_UNPACK_FORMAT, response)
@@ -113,8 +119,11 @@ class PyBoardSerial(HasTraits):
 
     def _poll_queue(self):
         self.serial_handler.lock.acquire()
+        is_connceted = self.serial_handler.is_connected
         retval = self.serial_handler.values
         self.serial_handler.lock.release()
+        if not is_connceted:
+            self._start_stop_fired()
         return retval
 
     def _refresh_list_fired(self):
@@ -126,9 +135,9 @@ class PyBoardSerial(HasTraits):
     def add_data(self):
         self.sample_nr += 1
         measurement_time = time() - self.acq_start_time
+        (nox_ppm, lambda_linear, oxygen_millivolt) = self._poll_queue()
         if not self.running:
             return
-        (nox_ppm, lambda_linear, oxygen_millivolt) = self._poll_queue()
         self.serial_out = "NOx: " + str(nox_ppm) + u", lin_\u03BB:" + str(lambda_linear)
         lambda_linear = 1000 * (1-(lambda_linear/20.9))
         dict_data = dict()

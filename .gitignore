@@ -3,6 +3,7 @@
 PyDAQmx
 pyvisa
 pg8000
+.idea
 
 # Compiled source #
 ###################

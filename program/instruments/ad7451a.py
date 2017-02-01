@@ -103,7 +103,6 @@ class ad7451a(HasTraits):
             data = self.acq_value
             pass
         self.acq_value = float(data)
-        logger.info(data)
         self.measurement_time = time() - self.acq_start_time   
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):

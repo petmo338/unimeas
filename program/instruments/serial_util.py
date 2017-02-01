@@ -36,10 +36,10 @@ class SerialUtil:
         return d
 
     @classmethod
-    def open(cls, resource_name, visa_resource, command='*IDN?'):
+    def open(cls, resource_name, visa_resource, command='*IDN?', timeout=TIMEOUT):
         instrument = None
         try:
-            instrument = visa_resource.open_resource(resource_name, timeout=cls.TIMEOUT)
+            instrument = visa_resource.open_resource(resource_name, timeout=timeout)
         except VisaIOError:
             return None
         instrument.query_delay = cls.QUERY_DELAY

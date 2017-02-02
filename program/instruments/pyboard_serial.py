@@ -25,6 +25,7 @@ class SerialHandler(threading.Thread):
     def __init__(self, selected_com_port):
         threading.Thread.__init__(self)
         self.ser = selected_com_port
+        self.is_connected = True
 
     def run(self):
         while not self.exit_flag:
@@ -139,14 +140,13 @@ class PyBoardSerial(HasTraits):
         if not self.running:
             return
         self.serial_out = "NOx: " + str(nox_ppm) + u", lin_\u03BB:" + str(lambda_linear)
-        lambda_linear = 1000 * (1-(lambda_linear/20.9))
         dict_data = dict()
         for i, enabled in enumerate(self.enabled_channels):
             dict_data[
                 self.output_channels[i]] = (
                 dict(
                     {self.x_units[0]: self.sample_nr, self.x_units[1]: measurement_time}),
-                    dict({self.y_units[0]: nox_ppm, self.y_units[1]: lambda_linear}))
+                    dict({self.y_units[0]: nox_ppm, self.y_units[1]: 1000.0/lambda_linear}))  # From Zhafira
         self.acquired_data.append(dict_data)
         self.timer = Timer.singleShot(max(0, (self.sample_interval * self.sample_nr -
                                               (time() - self.acq_start_time))*1000), self.add_data)

@@ -72,11 +72,9 @@ class GasMixerPanel(HasTraits):
 
     def _on_timer(self):
         socks = dict(self.subscriber_poller.poll(POLL_TIMEOUT))
-        logger.info(socks)
         if self.subscriber in socks and socks[self.subscriber] == zmq.POLLIN:
             msg = self.subscriber.recv()
             self.connect_timeout = 0
-            logger.info(msg.decode('UTF8'))
             if msg.find('NEWCOL') != -1:
                 self.current_column = ({self.x_units[0]: 0},
                                        {self.y_units[0]: int(msg.strip('NEWCOL '))})
@@ -91,7 +89,7 @@ class GasMixerPanel(HasTraits):
                     else:
                         self.active_instrument.start_stop = True
                         self.active_instrument.start_stop = True
-                logger.info('Starting measurement')
+                logger.info('Received START from GasMixer, starting measurement')
             elif msg.find('HEARTBEAT') != -1:
                 self.state = State.CONNECTED
                 self.running_label = 'GasMixer ' + State.strings[self.state]

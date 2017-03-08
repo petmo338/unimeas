@@ -1,11 +1,9 @@
-from traits.api import HasTraits, Bool, Int, List, Float, Instance,\
-    Str, Button, Dict, File, Array, on_trait_change
-from traitsui.api import Item, View, Group, HGroup, Handler, \
-    TableEditor, EnumEditor, spring, VGroup, ButtonEditor
+from traits.api import HasTraits, Bool, Int, List, Float, Instance, Str, Button, Dict, File, Array, on_trait_change
+from traitsui.api import Item, View, Group, HGroup, Handler, TableEditor, EnumEditor, spring, VGroup, ButtonEditor
 from traitsui.table_column import NumericColumn
 import logging
 import serial
-from time import sleep, time, strftime
+from time import time, strftime
 from pyface.timer.api import Timer
 import threading
 import Queue
@@ -59,7 +57,8 @@ def resistance_to_temp(resistance, resistance_at_RT = 109.7):
 
 class SerialHandler(threading.Thread):
 
-    response_unpack_format = '<2f3B7f'
+    response_unpack_format = {'0.2': '<2f3B7f', '0.3': '<2f3B7f', '1.0': '<2f3B7f'}
+    protocol_version = Str
     exit_flag = False
     is_connected = False
     ser = None
@@ -82,8 +81,14 @@ class SerialHandler(threading.Thread):
         self.ser.write('C')
         result = self.ser.readall()
         if result.find('CC') > -1:
-            self.is_connected = True
-            return True
+            self.protocol_version = result[result.find('V')+1:result.find('V')+4]
+            if self.protocol_version in self.response_unpack_format.keys():
+                self.is_connected = True
+                return True
+            self.ser.close()
+            GenericPopupMessage(message='Invalid protocol in temperature'
+                                        ' controller. Please update firmware').edit_traits()
+            return False
         else:
             self.ser.close()
             GenericPopupMessage(message='No temperature controller found!').edit_traits()
@@ -91,9 +96,8 @@ class SerialHandler(threading.Thread):
 
     def run(self):
         while not self.exit_flag:
-            # sleep(POLL_INTERVAL / 1000.0)
             self.ser.write('a')
-            response = self.ser.read(struct.calcsize(self.response_unpack_format))
+            response = self.ser.read(struct.calcsize(self.response_unpack_format.get(self.protocol_version, '0.3')))
             if len(response) == struct.calcsize('<2f3B7f'):
                 values = struct.unpack('<2f3B7f', response)
                 try:

@@ -25,7 +25,7 @@ except ImportError as e:
     logger.warning(e)
     USE_INFLUX_DB_LOGGING = False
 else:
-    USE_INFLUX_DB_LOGGING = True
+    USE_INFLUX_DB_LOGGING = False
 
 TABLE_NAME_PREPEND = 'm'
 DATABASE_SERVER_HOST = 'pc15389.sensor.lab'

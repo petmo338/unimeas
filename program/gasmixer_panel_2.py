@@ -5,8 +5,9 @@ from pyface.timer.api import Timer
 import threading
 import Queue
 import json
+import csv
 
-from time import sleep
+from time import time, sleep
 try:
     import zmq
 except ImportError as e:
@@ -56,24 +57,18 @@ class GasMixerSubscriber(threading.Thread):
         except:
             return None
 
-
-
     def run(self):
         while not self.exit_flag:
             socks = dict(self.poller.poll(POLL_TIMEOUT))
-            logger.warning(socks)
             if self.subscriber in socks and socks[self.subscriber] == zmq.POLLIN:
                 msg = self.subscriber.recv()
                 self.sub_queue.put_nowait(msg)
-            # elif self.control in socks and socks[self.control] == zmq.POLLIN:
 
             if not self.control_queue.empty():
                 self.control.send(self.control_queue.get())
                 self.control_queue.task_done()
                 msg = self.control.recv()
                 self.sub_queue.put_nowait(msg)
-
-            sleep(0.5)
         self.sub_queue.put_nowait('KILLINGMYSELF')
 
 class GasMixerPanelHandler(Handler):
@@ -112,6 +107,7 @@ class GasMixerPanel(HasTraits):
     gasmixer_broker = Instance(GasMixerSubscriber)
     subscribe_queue = Instance(Queue.Queue, ())
     control_queue = Instance(Queue.Queue, ())
+    gas_mix = Dict()
 
 
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
@@ -120,7 +116,9 @@ class GasMixerPanel(HasTraits):
                        handler=GasMixerPanelHandler)
 
     def _onTimer(self):
-        if not self.subscribe_queue.empty():
+        self.connect_timeout += UPDATE_INTERVAL
+        while not self.subscribe_queue.empty():
+            self.connect_timeout = 0
             msg = self.subscribe_queue.get()
             self.subscribe_queue.task_done()
             self.connect_timeout = 0
@@ -143,14 +141,20 @@ class GasMixerPanel(HasTraits):
                 if self.state != State.CONNECTED:
                     self.control_queue.put('CONNECT')
             elif msg.find('CONFIG') != -1:
-                    logger.info(json.loads(msg[6:]))
-                    #logger.info(msg[6:])
+                    jpath = json.loads(msg[6:])
+                    self.parse_board_file(jpath.get("boardname", ""))
                     self.state = State.CONNECTED
                     self.running_label = 'GasMixer ' + State.strings[self.state]
+            elif msg.find('FLOW') != -1:
+                if self.state == State.CONNECTED:
+                    flow_string = msg.split(',')[0]
+                    address_string = msg.split(',')[1]
+                    flow = int(flow_string.split(':')[1])
+                    address = int(address_string.split(':')[1])
+                    self.gas_mix[address][1] = (flow/32000.0)*float(self.gas_mix[address][2])
+
             elif msg.find('KILLINGMYSELF'):
                 self.timer.stop()
-            return
-        self.connect_timeout += UPDATE_INTERVAL
         if self.connect_timeout > CONNECT_TIMEOUT:
             self.state = State.DISCONNECTED
             self.running_label = 'GasMixer ' + State.strings[self.state]
@@ -181,6 +185,14 @@ class GasMixerPanel(HasTraits):
 
     def get_data(self):
         return self.current_column
+
+    def parse_board_file(self, path):
+        with open(path, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if row[0] == 'Reg':
+                    self.gas_mix[int(row[22])] = [row[2], 0, row[23]]
+
 
 if __name__ == '__main__':
     l = logging.getLogger()

@@ -312,13 +312,6 @@ class TemperatureControlPanel(HasTraits):
             self.update_PID_values = 3
         else:
             self.connect_button_string = 'Connect'
-            self.actual_temp = -1
-            self.PID_out = 0
-            self.process_value = -1
-            self.adjusted_pv = -1
-            self.pwm_value = -1
-            self.max31856_ctrl = 0
-            self.max31856_error = 0
 
     def _save_detailed_log_changed(self, new):
         if new:

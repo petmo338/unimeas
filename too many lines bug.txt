@@ -1,0 +1,41 @@
+dispatch_change_event
+    self.dispatch( handler, *args )
+  File "c:\users\sensor\appdata\local\enthought\canopy\user\lib\site-packages\traits\trait_notifiers.py", line 483, in d
+ispatch
+    handler( *args )
+  File "z:\unimeas\program\measure_over_time_task.py", line 250, in _dispatch_data
+    subscriber.add_data(data)
+  File "z:\unimeas\program\plot_panel.py", line 147, in add_data
+    self.data[key + rows_inc][self.index] = channel_data_x[self.x_units[key]]
+IndexError: index 172800 is out of bounds for axis 0 with size 172800
+Exception occurred in traits notification handler for object: <program.instruments.sourcemeter.SourceMeter object at 0x0
+00000000E55E570>, trait: acquired_data_items, old value: [], new value: [{'smua': ({'SampleNumber': 220114, 'Time': 2232
+03.231000185}, {'Current': 0.000236118, 'Voltage': 4.00052, 'Resistance': 16942.88448995841})}]
+Traceback (most recent call last):
+  File "c:\users\sensor\appdata\local\enthought\canopy\user\lib\site-packages\traits\trait_notifiers.py", line 520, in _
+dispatch_change_event
+    self.dispatch( handler, *args )
+  File "c:\users\sensor\appdata\local\enthought\canopy\user\lib\site-packages\traits\trait_notifiers.py", line 483, in d
+ispatch
+    handler( *args )
+  File "z:\unimeas\program\measure_over_time_task.py", line 250, in _dispatch_data
+    subscriber.add_data(data)
+  File "z:\unimeas\program\plot_panel.py", line 147, in add_data
+    self.data[key + rows_inc][self.index] = channel_data_x[self.x_units[key]]
+IndexError: index 172800 is out of bounds for axis 0 with size 172800
+2016-03-10 09:08:26,219 traits      : ERROR    Exception occurred in traits notification handler for object: <program.in
+struments.sourcemeter.SourceMeter object at 0x000000000E55E570>, trait: acquired_data_items, old value: [], new value: [
+{'smua': ({'SampleNumber': 220114, 'Time': 223203.231000185}, {'Current': 0.000236118, 'Voltage': 4.00052, 'Resistance':
+ 16942.88448995841})}]
+Traceback (most recent call last):
+  File "c:\users\sensor\appdata\local\enthought\canopy\user\lib\site-packages\traits\trait_notifiers.py", line 520, in _
+dispatch_change_event
+    self.dispatch( handler, *args )
+  File "c:\users\sensor\appdata\local\enthought\canopy\user\lib\site-packages\traits\trait_notifiers.py", line 483, in d
+ispatch
+    handler( *args )
+  File "z:\unimeas\program\measure_over_time_task.py", line 250, in _dispatch_data
+    subscriber.add_data(data)
+  File "z:\unimeas\program\plot_panel.py", line 147, in add_data
+    self.data[key + rows_inc][self.index] = channel_data_x[self.x_units[key]]
+IndexError: index 172800 is out of bounds for axis 0 with size 172800

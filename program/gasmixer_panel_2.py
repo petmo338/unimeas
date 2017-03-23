@@ -98,7 +98,7 @@ class GasMixerPanel(HasTraits):
     current_column = Tuple(Dict, Dict)
     current_column_int = Int(0)
 
-    output_channels = Dict({0:'gasmixer'})
+    output_channels = Dict({0: 'gasmixer'})
     control_gasmixer = Bool(False)
     connected = Bool(False)
     running_label = Str
@@ -123,8 +123,8 @@ class GasMixerPanel(HasTraits):
             self.subscribe_queue.task_done()
             self.connect_timeout = 0
             if msg.find('NEWCOL') != -1:
-                self.current_column = ({self.x_units[0]:0},
-                                       {self.y_units[0]:int(msg.strip('NEWCOL '))})
+                self.current_column = ({self.x_units[0]: 0},
+                                       {self.y_units[0]: int(msg.strip('NEWCOL '))})
             elif msg.find('STOP') != -1:
                 if self.control_gasmixer:
                     if self.active_instrument.running is True:
@@ -136,7 +136,7 @@ class GasMixerPanel(HasTraits):
                     else:
                         self.active_instrument.start_stop = True
                         self.active_instrument.start_stop = True
-                logger.info('Starting measurement')
+                logger.info('Received START from GasMixer, starting measurement')
             elif msg.find('HEARTBEAT') != -1:
                 if self.state != State.CONNECTED:
                     self.control_queue.put('CONNECT')
@@ -158,6 +158,7 @@ class GasMixerPanel(HasTraits):
         if self.connect_timeout > CONNECT_TIMEOUT:
             self.state = State.DISCONNECTED
             self.running_label = 'GasMixer ' + State.strings[self.state]
+        self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
     def __init__(self, **traits):
         if USE_ZMQ is False:
@@ -169,7 +170,7 @@ class GasMixerPanel(HasTraits):
         else:
             self.gasmixer_broker.start()
         self.state = State.DISCONNECTED
-        self.timer = Timer(UPDATE_INTERVAL, self._onTimer)
+        self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
     def _current_column_changed(self, old, new):
         self.current_column_int = new[1][self.y_units[0]]

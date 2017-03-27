@@ -82,6 +82,7 @@ class SerialHandler(threading.Thread):
         if result.find('CC') > -1:
             self.protocol_version = result[result.find('V') + 1:result.find('V') + 4]
             if self.protocol_version in self.response_unpack_format.keys():
+                logger.info('Connected, using protocol %s', self.protocol_version)
                 self.is_connected = True
                 return True
             self.ser.close()
@@ -95,7 +96,14 @@ class SerialHandler(threading.Thread):
 
     def run(self):
         while not self.exit_flag:
-            self.ser.write('a')
+            try:
+                self.ser.write('a')
+            except serial.SerialException as e:
+                if type(e) == serial.SerialTimeoutException:
+                    return
+                else:
+                    self.exit_flag = True
+                    break
             response = self.ser.read(struct.calcsize(self.response_unpack_format.get(self.protocol_version, '0.3')))
             if len(response) == struct.calcsize(self.response_unpack_format.get(self.protocol_version, '<2f3B7f')):
                 values = struct.unpack(self.response_unpack_format.get(self.protocol_version, '<2f3B7f'), response)
@@ -178,7 +186,7 @@ class TemperatureControlPanel(HasTraits):
     pane_name = Str('Temperature control ')
     pane_id = Str('sensorscience.unimeas.temperatur_control_pane')
     output_channels = Dict({0: 'temp_controller'})
-    y_units = Dict({0: 'temp'})
+    y_units = Dict({0: 'Temp', 1: 'Resistance'})
     enable = Bool(False)
     loop_sequence = Bool(True)
     poll_timer = Instance(Timer)
@@ -261,25 +269,25 @@ class TemperatureControlPanel(HasTraits):
                        Item('process_value', label=u'Res  [\u2126]', style='readonly', format_str='%.2f'),
                        Item('adjusted_pv', label=u'Adj. res  [\u2126]', style='readonly', format_str='%.2f'),
                        Item('setpoint', style='readonly', format_str='%.2f'),
-                       Item('second_process_value', label=u'Res (extra) [\u2126]', style='readonly', format_str='%.2f'),
-                spring,
-                VGroup(Item('pwm_value', style='readonly', format_str='%d'),
-                       Item('max31865_ctrl', style='readonly', format_str='%#04x'),
-                       Item('max31865_error', style='readonly', format_str='%#04x')),
-                spring,
-                VGroup(Item('PID_out', style='readonly', format_str='%.2f'),
-                       Item('supply_voltage', style='readonly', format_str='%.2f'),
-                       Item('RT_resistance', style='readonly', format_str='%.2f'))),
-            label='Diagnostic parameters', show_border=True,
-        ),
-        HGroup(
-            Group(
-                VGroup(Item('temp_setpoint', format_str='%.1f')),
-                VGroup(Item('resistance_setpoint', format_str='%.1f')),
-                VGroup(Item('supply_voltage_setpoint', format_str='%.1f')),
-                VGroup(Item('RT_resistance_setpoint', format_str='%.1f')),
-                VGroup(Item('second_ref_resistance', label='Ref res (extra)', format_str='%.1f')),
-                Item('set_parameters', enabled_when='connected'),
+                       Item('second_process_value', label=u'Res (extra) [\u2126]', style='readonly', format_str='%.2f')),
+                       spring,
+                       VGroup(Item('pwm_value', style='readonly', format_str='%d'),
+                              Item('max31865_ctrl', style='readonly', format_str='%#04x'),
+                              Item('max31865_error', style='readonly', format_str='%#04x')),
+                       spring,
+                       VGroup(Item('PID_out', style='readonly', format_str='%.2f'),
+                              Item('supply_voltage', style='readonly', format_str='%.2f'),
+                              Item('RT_resistance', style='readonly', format_str='%.2f'))),
+                label='Diagnostic parameters', show_border=True,
+            ),
+            HGroup(
+                Group(
+                    VGroup(Item('temp_setpoint', format_str='%.1f')),
+                    VGroup(Item('resistance_setpoint', format_str='%.1f')),
+                    VGroup(Item('supply_voltage_setpoint', format_str='%.1f')),
+                    VGroup(Item('RT_resistance_setpoint', format_str='%.1f')),
+                    VGroup(Item('second_ref_resistance', label='Ref res (extra)', format_str='%.1f')),
+                    Item('set_parameters', enabled_when='connected'),
                 label='Adjustable parameters', show_border=True,
             ),
             Group(
@@ -383,7 +391,7 @@ class TemperatureControlPanel(HasTraits):
                 self.pid_I = values[9]
                 self.pid_D = values[10]
                 self.pid_N = values[11]
-            if len(values == 13):
+            if float(self.serial_handler.protocol_version) > 0.3:
                 self.second_process_value = values[12] * self.second_ref_resistance / 1000.0
             if self.save_detailed_log:
                 self.csv_writer.writerow(values)
@@ -454,7 +462,7 @@ class TemperatureControlPanel(HasTraits):
         pass
 
     def get_data(self):
-        return {'time': 0}, {'temp': self.actual_temp}
+        return {'time': 0}, {self.y_units[0]: self.actual_temp, self.y_units[1]: self.second_process_value}
 
     def calculate_temperature_table(self):
         self.temperature_table = np.array([])

@@ -228,6 +228,7 @@ class TemperatureControlPanel(HasTraits):
     com_ports_list = List(Str)
     connect = Button
     connect_button_string = Str('Connect')
+    rescan = Button
     update_PID_values = Int(0)
     set_parameters = Button
     update_pid = Button
@@ -244,7 +245,8 @@ class TemperatureControlPanel(HasTraits):
                     editor=EnumEditor(name='com_ports_list'),
                     enabled_when='not running'),
                Item('connect', editor=ButtonEditor(label_value='connect_button_string'),
-                    show_label=False,  enabled_when='selected_com_port != ""')),
+                    show_label=False,  enabled_when='selected_com_port != ""'),
+               Item('rescan', show_label=False)),
         Item('enable', label='Enable temp program', enabled_when='connected'),
         Item('loop_sequence', label='Loop temperature sequence'),
         Group(Item('table_entries', show_label=False, editor=table_editor,
@@ -514,6 +516,9 @@ class TemperatureControlPanel(HasTraits):
             if self.poll_timer is not None:
                 self.poll_timer.stop()
             self.connected = False
+
+    def _rescan_fired(self):
+        self.com_ports_list = self._com_ports_list_default()
 
     def _save_fired(self):
         if self.filename is '':

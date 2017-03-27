@@ -51,6 +51,7 @@ class SourceMeter(HasTraits):
 
     selected_device = Str
     identify_button = Button('Identify')
+    rescan_button = Button
     constant_current_mode = Bool(True)
     constant_voltage_mode = Bool(False)
 
@@ -126,8 +127,10 @@ class SourceMeter(HasTraits):
 
     traits_view = View(HGroup(Item('selected_device', label='Device',
                                    editor=EnumEditor(name='_available_devices_map'),
-                                   enabled_when='not running'), Item('identify_button',
-                                                                     enabled_when='selected_device != \'\'')),
+                                   enabled_when='not running'),
+                              Item('identify_button', show_label=False,
+                                   enabled_when='selected_device != \'\''),
+                              Item('rescan_button', show_label=False, enabled_when='not running')),
                        measurement_settings_group,
                        instrument_settings_group,
                        enabled_channels_group,
@@ -158,6 +161,9 @@ class SourceMeter(HasTraits):
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
         logger.warning(d)
         return d
+
+    def _rescan_button_fired(self):
+        self._available_devices_map = self.__available_devices_map_default()
 
     def _selected_device_changed(self, new):
         logger.info('New instrument %s', new)

@@ -1,6 +1,6 @@
 import logging
 from traits.api import HasTraits, Int, Bool, Str, Event, Instance, Dict, Tuple
-from traitsui.api import Item, View, Handler, ButtonEditor,  HGroup, spring, Label
+from traitsui.api import Item, View, Handler, ButtonEditor, HGroup, spring, Label
 from pyface.timer.api import Timer
 import threading
 import Queue
@@ -8,6 +8,7 @@ import json
 import csv
 
 from time import time, sleep
+
 try:
     import zmq
 except ImportError as e:
@@ -36,7 +37,6 @@ class State:
                STARTING: 'Starting',
                RUNNING: 'Running',
                STOPPING: 'Stopping'}
-
 
 
 class GasMixerSubscriber(threading.Thread):
@@ -71,8 +71,8 @@ class GasMixerSubscriber(threading.Thread):
                 self.sub_queue.put_nowait(msg)
         self.sub_queue.put_nowait('KILLINGMYSELF')
 
-class GasMixerPanelHandler(Handler):
 
+class GasMixerPanelHandler(Handler):
     def closed(self, info, is_ok):
         """ Handles a dialog-based user interface being closed by the user.
         Overridden here to stop the timer once the window is destroyed.
@@ -84,7 +84,6 @@ class GasMixerPanelHandler(Handler):
 
 
 class GasMixerPanel(HasTraits):
-
     """"########### Panel Interface ###########################"""
 
     pane_name = Str('Gasmixer control')
@@ -93,8 +92,8 @@ class GasMixerPanel(HasTraits):
     running = Bool(False)
     timer = Instance(Timer)
     button = Event
-    y_units = Dict({0 : 'column'})
-    x_units = Dict({0 : 'time'})
+    y_units = Dict({0: 'column'})
+    x_units = Dict({0: 'time'})
     current_column = Tuple(Dict, Dict)
     current_column_int = Int(0)
 
@@ -109,13 +108,12 @@ class GasMixerPanel(HasTraits):
     control_queue = Instance(Queue.Queue, ())
     gas_mix = Dict()
 
-
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
                        Item('current_column_int', label='Curr. column'),
                        Item('running_label', label='State', style='readonly'),
                        handler=GasMixerPanelHandler)
 
-    def _onTimer(self):
+    def _on_timer(self):
         self.connect_timeout += UPDATE_INTERVAL
         while not self.subscribe_queue.empty():
             self.connect_timeout = 0
@@ -141,17 +139,17 @@ class GasMixerPanel(HasTraits):
                 if self.state != State.CONNECTED:
                     self.control_queue.put('CONNECT')
             elif msg.find('CONFIG') != -1:
-                    jpath = json.loads(msg[6:])
-                    self.parse_board_file(jpath.get("boardname", ""))
-                    self.state = State.CONNECTED
-                    self.running_label = 'GasMixer ' + State.strings[self.state]
+                jpath = json.loads(msg[6:])
+                self.parse_board_file(jpath.get("boardname", ""))
+                self.state = State.CONNECTED
+                self.running_label = 'GasMixer ' + State.strings[self.state]
             elif msg.find('FLOW') != -1:
                 if self.state == State.CONNECTED:
                     flow_string = msg.split(',')[0]
                     address_string = msg.split(',')[1]
                     flow = int(flow_string.split(':')[1])
                     address = int(address_string.split(':')[1])
-                    self.gas_mix[address][1] = (flow/32000.0)*float(self.gas_mix[address][2])
+                    self.gas_mix[address][1] = (flow / 32000.0) * float(self.gas_mix[address][2])
 
             elif msg.find('KILLINGMYSELF'):
                 self.timer.stop()
@@ -176,7 +174,7 @@ class GasMixerPanel(HasTraits):
         self.current_column_int = new[1][self.y_units[0]]
 
     def _current_column_default(self):
-        return {self.x_units[0]: 0}, {self.y_units[0]:0}
+        return {self.x_units[0]: 0}, {self.y_units[0]: 0}
 
     def _running_label_default(self):
         return 'GasMixer ' + State.strings[self.state]

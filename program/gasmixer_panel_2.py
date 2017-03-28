@@ -115,7 +115,7 @@ class GasMixerPanel(HasTraits):
                        Item('running_label', label='State', style='readonly'),
                        handler=GasMixerPanelHandler)
 
-    def _onTimer(self):
+    def _on_timer(self):
         self.connect_timeout += UPDATE_INTERVAL
         while not self.subscribe_queue.empty():
             self.connect_timeout = 0

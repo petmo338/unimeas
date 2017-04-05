@@ -44,4 +44,5 @@ ehthumbs.db
 Thumbs.db
 
 influxdb
-.idea
+.idea
+*.csv

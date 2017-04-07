@@ -7,14 +7,19 @@ from instrument_help_pane import InstrumentHelpPane
 from instrument_show_group import InstrumentShowGroup
 from interval_plot_panel import IntervalPlotPanel
 from instruments.i_instrument import IInstrument
-#from sql_panel_interval import SQLPanel
+from temperature_control_panel_2 import TemperatureControlPanel
+
+# from sql_panel_interval import SQLPanel
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class EmptyCentralPane(TraitsTaskPane):
     id = 'sensorscience.unimeas.empty_central_pane'
     name = 'Empty central pane'
-    traits_view = View(resizable = False, width = 5)
+    traits_view = View(resizable=False, width=5)
+
 
 class MeasureIntervalTask(Task):
     """A Task for measuring over an interval. Voltage ramp, frequency interval etc..
@@ -32,9 +37,8 @@ class MeasureIntervalTask(Task):
     menu_bar = SMenuBar(SMenu(id='File', name='&File'),
                         SMenu(id='Edit', name='&Edit'),
                         SMenu(TaskToggleGroup(), id='Tasks', name='&Measurement type'),
-                        SMenu(DockPaneToggleGroup(),  id='Measurement', name='&Panels'),
+                        SMenu(DockPaneToggleGroup(), id='Measurement', name='&Panels'),
                         SMenu(InstrumentShowGroup(), id='Instrument', name='&Instrument'))
-
 
     def create_central_pane(self):
         """ Create a plot pane with a list of instruments. Keep track of which
@@ -43,17 +47,17 @@ class MeasureIntervalTask(Task):
         return EmptyCentralPane()
 
     def create_dock_panes(self):
-        return [ GenericPane(panel=self.active_instrument,
-                                id = 'sensorscience.unimeas.instrument_config_pane',
-                                name = 'Instrument configuration'),
-                 InstrumentHelpPane(instrument=self.active_instrument),
-                 GenericPane(panel=self.panels[0],
-                                id = self.panels[0].pane_id,
-                                name = self.panels[0].pane_name),
-#                 GenericPane(panel=self.panels[1],
-#                                id = self.panels[1].pane_id,
-#                                name = self.panels[1].pane_name)
-                 ]
+        return [GenericPane(panel=self.active_instrument,
+                            id='sensorscience.unimeas.instrument_config_pane',
+                            name='Instrument configuration'),
+                InstrumentHelpPane(instrument=self.active_instrument),
+                GenericPane(panel=self.panels[0],
+                            id=self.panels[0].pane_id,
+                            name=self.panels[0].pane_name),
+                GenericPane(panel=self.panels[1],
+                            id=self.panels[1].pane_id,
+                            name=self.panels[1].pane_name)
+                ]
 
     def initialized(self):
         self.update_active_instrument(self, 'from_init', None, self.active_instrument)
@@ -64,12 +68,12 @@ class MeasureIntervalTask(Task):
     def _default_layout_default(self):
         return TaskLayout(
             left=Splitter(Tabbed(PaneItem('sensorscience.unimeas.instrument_config_pane'),
-                        PaneItem('sensorscience.unimeas.instrument_help_pane')),
-                        PaneItem(self.panels[0].pane_id),
-#                        PaneItem(self.panels[1].pane_id),
-                        orientation = 'vertical'),
+                                 PaneItem('sensorscience.unimeas.instrument_help_pane')),
+                          PaneItem(self.panels[0].pane_id),
+                          #                        PaneItem(self.panels[1].pane_id),
+                          orientation='vertical'),
             right=PaneItem('sensorscience.unimeas.interval_plot_pane')
-            )
+        )
 
     def _instruments_default(self):
         instruments = []
@@ -79,7 +83,7 @@ class MeasureIntervalTask(Task):
             pass
         else:
             instruments.append(Blank())
-        
+
         try:
             from instruments.dummy_interval_instrument import DummyIntervalInstrument
         except ImportError as e:
@@ -103,7 +107,7 @@ class MeasureIntervalTask(Task):
             instruments.append(SourceMeter())
         try:
             from instruments.interval_ni6215 import NI6215
-        except ImportError as e:
+        except (ImportError) as e:
             logger.warning('Unable to import: %s', e)
             pass
         else:
@@ -122,10 +126,12 @@ class MeasureIntervalTask(Task):
         panels.append(self.plot_panel)
         self.start_stop_subscribers.append(self.plot_panel)
         self.data_subscribers.append(self.plot_panel)
-#        self.sql_panel = SQLPanel()
-#        panels.append(self.sql_panel)
-#        self.start_stop_subscribers.append(panels[-1])
-#        self.data_subscribers.append(panels[-1])
+        self.temperature_control_panel = TemperatureControlPanel()
+        panels.append(self.temperature_control_panel)
+        #        self.sql_panel = SQLPanel()
+        #        panels.append(self.sql_panel)
+        #        self.start_stop_subscribers.append(panels[-1])
+        #        self.data_subscribers.append(panels[-1])
 
         return panels
 
@@ -135,13 +141,13 @@ class MeasureIntervalTask(Task):
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.on_trait_change(self._configure_plots, 'active_instrument.enabled_channels[]')
         self.plot_panel.configure_plots(self.active_instrument)
-#        self.sql_panel.set_active_instrument(new)
+        #        self.sql_panel.set_active_instrument(new)
         for dock_pane in self.window.dock_panes:
             if dock_pane.id.find('instrument_config_pane') != -1:
                 dock_pane.panel = self.active_instrument
 
     def _dispatch_data(self):
-         while len(self.active_instrument.acquired_data) > 0:
+        while len(self.active_instrument.acquired_data) > 0:
             data = self.active_instrument.acquired_data.pop(0).copy()
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)

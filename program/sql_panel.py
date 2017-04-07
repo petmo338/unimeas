@@ -7,10 +7,17 @@ import csv
 import time
 import logging
 import tempfile
-import pg8000
+
 import ConfigParser
 
 logger = logging.getLogger(__name__)
+try:
+    import pg8000
+except ImportError as e:
+    logger.warning(e)
+    USE_PGSQL = False
+else:
+    USE_PGSQL = True
 
 try:
     from influxdb import InfluxDBClient
@@ -19,8 +26,6 @@ except ImportError as e:
     USE_INFLUX_DB_LOGGING = False
 else:
     USE_INFLUX_DB_LOGGING = True
-    
-    
 
 TABLE_NAME_PREPEND = 'm'
 DATABASE_SERVER_HOST = 'pc15389.sensor.lab'
@@ -177,7 +182,7 @@ class SQLWrapper():
 
 class SQLPanel(HasTraits):
 
-    ############ Panel Interface ###########################3
+    """############ Panel Interface ###########################3"""
 
     pane_name = Str('Save Configuration')
     pane_id = Str('sensorscience.unimeas.sql_pane')
@@ -196,19 +201,21 @@ class SQLPanel(HasTraits):
     available_users = List(Unicode)
     available_measurements = List(Unicode)
 
-
-    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when = 'not running'),
-                            Item('selected_user',
-                            editor=EnumEditor(name='available_users'),
-                            enabled_when = 'not running and save_in_database'), spring,
-                        Item('new_measurement', show_label=False,  enabled_when = 'not running and save_in_database')),
-                        Item('measurement_name',
-                            editor=EnumEditor(name='available_measurements'),
-                            enabled_when = 'not running and save_in_database'),
-                        Item('measurement_description', enabled_when = 'False', style = 'custom'),
-                        Item('save_to_file', label = 'Save to file (.csv)', enabled_when = 'not running'),
-                        #Item('filename', enabled_when = 'not running and save_to_file'),
-                        Item('filename',  style='simple', editor = FileEditor(dialog_style = 'save', filter = ['*.csv']))))
+    traits_view = View(VGroup(HGroup(Item('save_in_database', enabled_when='USE_PGSQL and not running'),
+                                     Item('selected_user', editor=EnumEditor(name='available_users'),
+                                          enabled_when='not running and save_in_database'),
+                                     spring,
+                                     Item('new_measurement', show_label=False,
+                                          enabled_when='not running and save_in_database')),
+                              Item('measurement_name', editor=EnumEditor(name='available_measurements'),
+                                   enabled_when='not running and save_in_database'),
+                              Item('measurement_description', enabled_when='False', style='custom'),
+                              Item('save_to_file', label = 'Save to file (.csv)', enabled_when='not running'),
+                              Item('filename',  style='simple', editor=FileEditor(dialog_style='save',
+                                                                                  filter=['*.csv'])
+                                   )
+                              )
+                       )
 
     def _new_measurement_fired(self):
         popup = CreateMeasurementPopup()
@@ -271,10 +278,13 @@ class SQLPanel(HasTraits):
                             break
                         data_list[column_index] = data[channel][1][column[len(channel):]]
 
-        if self.save_to_file:
-            self.csv_writer.writerow(data_list)
         if hasattr(self, 'backup_csv_writer'):
             self.backup_csv_writer.writerow(data_list)
+        try:
+            if hasattr(self, 'csv_writer'):
+                self.csv_writer.writerow(data_list)
+        except ValueError as e:
+            logger.warning(e)
 
     def add_data(self, data):
         self.write_to_file(data)
@@ -284,7 +294,7 @@ class SQLPanel(HasTraits):
             except ConfigParser.NoSectionError as e:
                 system = 'SystemNoSet'
                 logger.warning('No preferences.ini found: %s', e)
-            d={}
+            d = {}
             for v in data.values():
                 d.update(v[1])
             influx = [{
@@ -300,18 +310,19 @@ class SQLPanel(HasTraits):
                 logger.warning('%s', e)
         if self.save_in_database:
             self.database_wrapper.insert_data(data)
-        
-
 
     def start_stop(self, running):
+        global USE_INFLUX_DB_LOGGING
         self.running = running
         if running:
             if USE_INFLUX_DB_LOGGING:
                 try:
-                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD, INFLUX_DB_DATABASE)
+                    self.conn_influx = InfluxDBClient(DATABASE_SERVER_HOST, 8086, DATABASE_USER, DATABASE_PASSWORD,
+                                                      INFLUX_DB_DATABASE, False, False, 0.2)
                 except Exception as e:
                     logger.warning('Real time plot connection failed: %s', e)
-                    
+                    USE_INFLUX_DB_LOGGING = False
+
             self.backup_log_file = tempfile.NamedTemporaryFile(delete=False, prefix='unimeas_backup_measurement')
             logger.info('Backup measurement log: %s', self.backup_log_file.name)
             self.backup_csv_writer = csv.writer(self.backup_log_file, quoting=csv.QUOTE_NONNUMERIC)
@@ -326,16 +337,21 @@ class SQLPanel(HasTraits):
                         self.measurement_description)
             if self.save_to_file:
                 try:
-                    self.filehandle = open(self.filename, "a", 1)
+                    self.filehandle = open(self.filename, 'a', 1)
                 except IOError:
                     logger.error('Unable to open file %s', self.filename)
+                    GenericPopupMessage(message = 'Invalid filename. Stop measurement and fix').edit_traits()
                 else:
-                    self.csv_writer = csv.writer(self.filehandle, quoting=csv.QUOTE_NONNUMERIC)
+                    self.csv_writer = csv.writer(self.filehandle,
+                        lineterminator='\n', quoting=csv.QUOTE_NONNUMERIC)
                     self.csv_writer.writerow(self.column_names)
+                    logger.warning('Using ' + self.filename + 'for measurement log.')
                 self.column_names = self.column_names
         else:
-            if self.save_to_file:
-                self.filehandle.close()
+            if hasattr(self, 'csv_writer'):
+                self.filehandle.flush()
+            if hasattr(self, 'backup_csv_writer'):
+                self.backup_log_file.flush()
 #        if not running and self.save_to_file:
 #            del self.csv_writer
 

@@ -11,6 +11,14 @@ from instrument import Instrument
 from measurement_class import MeasurementClass
 from base import Base
 
+import ConfigParser
+
+config = ConfigParser.ConfigParser()
+logger.info('Config file %s', config.read('preferences.ini'))
+if config.has_option('General', 'DSN'):
+    DSN = config.get('General', 'DSN')
+else:
+    DSN = 'sqlite:///:memory:'
 logger = logging.getLogger(__name__)
 Session = sessionmaker()
 
@@ -33,7 +41,7 @@ class SessionManager(object):
     engine = None
     session = None
 
-    def __init__(self, dsn='sqlite:///:memory:'):
+    def __init__(self, dsn=DSN):
         try:
             self.engine = create_engine(dsn, echo=False)
             Session.configure(bind=self.engine)

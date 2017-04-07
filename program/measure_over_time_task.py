@@ -11,15 +11,17 @@ from gpio_panel import GPIOPanel
 from plot_panel import PlotPanel
 from temperature_control_panel_2 import TemperatureControlPanel
 from instrument_show_group import InstrumentShowGroup
-#import pdb
+# import pdb
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class EmptyCentralPane(TraitsTaskPane):
     id = 'sensorscience.unimeas.empty_central_pane'
     name = 'Empty central pane'
-    traits_view = View(resizable = False, width = 5)
+    traits_view = View(resizable=False, width=5)
+
 
 class MeasureOverTimeTask(Task):
     """ A task for measure something over time.
@@ -33,7 +35,7 @@ class MeasureOverTimeTask(Task):
     menu_bar = SMenuBar(SMenu(id='File', name='&File'),
                         SMenu(id='Edit', name='&Edit'),
                         SMenu(TaskToggleGroup(), id='Tasks', name='&Measurement type'),
-                        SMenu(DockPaneToggleGroup(),  id='Measurement', name='&Panels'),
+                        SMenu(DockPaneToggleGroup(), id='Measurement', name='&Panels'),
                         SMenu(InstrumentShowGroup(), id='Instrument', name='&Instrument'))
 
     active_instrument = Instance(IInstrument)
@@ -63,25 +65,25 @@ class MeasureOverTimeTask(Task):
 
     def create_dock_panes(self):
         self.active_instrument = self.instruments[0]
-        return [ GenericPane(panel=self.active_instrument,
-                                id = 'sensorscience.unimeas.instrument_config_pane',
-                                name = 'Instrument configuration'),
-                 InstrumentHelpPane(instrument=self.active_instrument),
-                 GenericPane(panel=self.panels[0],
-                                id = self.panels[0].pane_id,
-                                name = self.panels[0].pane_name),
-                 GenericPane(panel=self.panels[1],
-                                id = self.panels[1].pane_id,
-                                name = self.panels[1].pane_name),
-                 GenericPane(panel=self.panels[2],
-                                id = self.panels[2].pane_id,
-                                name = self.panels[2].pane_name),
-                 GenericPane(panel=self.panels[3],
-                                id = self.panels[3].pane_id,
-                                name = self.panels[3].pane_name),
+        return [GenericPane(panel=self.active_instrument,
+                            id='sensorscience.unimeas.instrument_config_pane',
+                            name='Instrument configuration'),
+                InstrumentHelpPane(instrument=self.active_instrument),
+                GenericPane(panel=self.panels[0],
+                            id=self.panels[0].pane_id,
+                            name=self.panels[0].pane_name),
+                GenericPane(panel=self.panels[1],
+                            id=self.panels[1].pane_id,
+                            name=self.panels[1].pane_name),
+                GenericPane(panel=self.panels[2],
+                            id=self.panels[2].pane_id,
+                            name=self.panels[2].pane_name),
+                GenericPane(panel=self.panels[3],
+                            id=self.panels[3].pane_id,
+                            name=self.panels[3].pane_name),
                 GenericPane(panel=self.panels[4],
-                                id = self.panels[4].pane_id,
-                                name = self.panels[4].pane_name),                 ]
+                            id=self.panels[4].pane_id,
+                            name=self.panels[4].pane_name), ]
 
     def activated(self):
         self._update_active_instrument(None, None, None, None)
@@ -94,34 +96,34 @@ class MeasureOverTimeTask(Task):
     def _default_layout_default(self):
         return TaskLayout(
             left=Splitter(Tabbed(PaneItem('sensorscience.unimeas.instrument_config_pane'),
-                        PaneItem('sensorscience.unimeas.instrument_help_pane')),
-                        PaneItem(self.panels[0].pane_id),
-                        PaneItem(self.panels[1].pane_id),
-                        orientation = 'vertical'),
+                                 PaneItem('sensorscience.unimeas.instrument_help_pane')),
+                          PaneItem(self.panels[0].pane_id),
+                          PaneItem(self.panels[1].pane_id),
+                          orientation='vertical'),
             right=PaneItem('sensorscience.unimeas.plot_pane')
-            )
+        )
 
     def _instruments_default(self):
         instruments = []
         try:
             from instruments.blank import Blank
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Blank())
 
         try:
             from instruments.dummysourcemetertime import DummySourcemeterTime
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(DummySourcemeterTime())
 
         try:
             from instruments.sourcemeter import SourceMeter
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
-        #except WindowsError:
+            logger.warning('Error on import: %s, %s', type(e), e.message)
+        # except WindowsError:
         #    pass
         else:
             instruments.append(SourceMeter())
@@ -129,55 +131,65 @@ class MeasureOverTimeTask(Task):
         try:
             from instruments.ni6215 import NI6215
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(NI6215())
 
         try:
             from instruments.SB50_moslab import NI6215_MOSLab
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(NI6215_MOSLab())
 
         try:
             from instruments.TGS2442_moslab import TGS2442_MOSLab
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(TGS2442_MOSLab())
-        
+
         try:
             from instruments.sensic_cu import SenSiCCU
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(SenSiCCU())
 
         try:
             from instruments.K2100 import K2100
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(K2100())
 
         try:
             from instruments.time_boonton7200 import Boonton7200
         except ImportError as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
-        #except WindowsError:
-        #    pass
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Boonton7200())
 
         try:
             from instruments.time_agilent_4284 import Agilent4284
         except Exception as e:
-            logger.info('Error on import: %s, %s', type(e), e.message)
-        #except WindowsError:
-        #    pass
+            logger.warning('Error on import: %s, %s', type(e), e.message)
         else:
             instruments.append(Agilent4284())
+
+        try:
+            from instruments.ad7451a import ad7451a
+        except Exception as e:
+            logger.warning('Error on import: %s, %s', type(e), e.message)
+        else:
+            instruments.append(ad7451a())
+
+        try:
+            from instruments.pyboard_serial import PyBoardSerial
+        except Exception as e:
+            logger.warning('Error on import: %s, %s', type(e), e.message)
+        else:
+            instruments.append(PyBoardSerial())
 
         return instruments
 
@@ -207,11 +219,11 @@ class MeasureOverTimeTask(Task):
 
     @on_trait_change('active_instrument')
     def _update_active_instrument(self, obj, name, old, new):
-        #try:
+        # try:
         #    self.data_suppliers.remove(old)
-        #except ValueError:
+        # except ValueError:
         #    pass
-        #self.data_suppliers.append(new)
+        # self.data_suppliers.append(new)
         self.on_trait_change(self._dispatch_data, 'active_instrument.acquired_data[]')
         self.on_trait_change(self._start_stop, 'active_instrument.start_stop')
         self.on_trait_change(self.plot_panel.update_visible_plots, 'active_instrument.enabled_channels[]')
@@ -231,7 +243,8 @@ class MeasureOverTimeTask(Task):
             for y_unit in self.active_instrument.y_units.values():
                 self.data_units.append(self.active_instrument.output_channels[i] + y_unit)
         for supplier in self.data_suppliers:
-            self.data_units.append(supplier.output_channels[0] + supplier.y_units[0])
+            for unit in supplier.y_units.values():
+                self.data_units.append(supplier.output_channels[0] + unit)
         self.sql_panel.set_column_names(self.data_units)
 
     @on_trait_change('active_instrument.start_stop')
@@ -245,6 +258,6 @@ class MeasureOverTimeTask(Task):
             data = self.active_instrument.acquired_data.pop(0).copy()
             for supplier in self.data_suppliers:
                 data[supplier.output_channels[0]] = supplier.get_data()
-#            data['gasmixer'] = self.gasmixer_panel.current_column
+            #            data['gasmixer'] = self.gasmixer_panel.current_column
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)

@@ -42,3 +42,7 @@ pg8000
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+influxdb
+.idea
+*.csv

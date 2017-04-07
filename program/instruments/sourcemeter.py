@@ -39,7 +39,7 @@ class SourceMeter(HasTraits):
     start_stop = Event
 
     output_channels = Dict({0: 'smua'})
-    """ Must not have overlapping names/numbers \
+    """ Must not have overlapping names/numbers
         i.e. ai1, ai12, ai13 will generate error """
     smua0_enabled = Bool(True)
     smua1_enabled = Bool(False)
@@ -51,6 +51,7 @@ class SourceMeter(HasTraits):
 
     selected_device = Str
     identify_button = Button('Identify')
+    rescan_button = Button
     constant_current_mode = Bool(True)
     constant_voltage_mode = Bool(False)
 
@@ -90,7 +91,8 @@ class SourceMeter(HasTraits):
 
     derivative_resistance_calc_group = Group(Item('derivative_resistance_enabled', label='dI/dV enabled'),
                                              Item('derivative_resistance_voltage_span', label=u'\u00B1 range'),
-                                             Item('derivative_resistance_voltage_points', label=u'# points, use odd nr'),
+                                             Item('derivative_resistance_voltage_points',
+                                                  label=u'# points, use odd nr'),
                                              show_border=True, enabled_when='constant_voltage_mode',
                                              label='dV/dI settings')
 
@@ -103,8 +105,10 @@ class SourceMeter(HasTraits):
                                               Item('current_limit', label='Current limit [mA]'),
                                               derivative_resistance_calc_group,
                                               enabled_when='not running'),
-                                       Item('actual_current', style='readonly', label='Actual current [mA]', format_str='%.7f'),
-                                       Item('actual_voltage', style='readonly', label='Actual Voltage [V]', format_str='%.4f'),
+                                       Item('actual_current', style='readonly', label='Actual current [mA]',
+                                            format_str='%.7f'),
+                                       Item('actual_voltage', style='readonly', label='Actual Voltage [V]',
+                                            format_str='%.4f'),
                                        show_border=True, label='Setup')
 
     instrument_settings_group = Group(HGroup(Item('current_range',
@@ -113,7 +117,6 @@ class SourceMeter(HasTraits):
                                                   editor=EnumEditor(name='_voltage_range_map'))),
                                       Item('sampling_interval'), show_border=True,
                                       label='Measurement ranges')
-
 
     enabled_channels_group = HGroup(Item('smua0_enabled', label='0'),
                                     Item('smua1_enabled', label='1', enabled_when='False'),
@@ -124,8 +127,10 @@ class SourceMeter(HasTraits):
 
     traits_view = View(HGroup(Item('selected_device', label='Device',
                                    editor=EnumEditor(name='_available_devices_map'),
-                                   enabled_when='not running'), Item('identify_button',
-                                enabled_when='selected_device != \'\'')),
+                                   enabled_when='not running'),
+                              Item('identify_button', show_label=False,
+                                   enabled_when='selected_device != \'\''),
+                              Item('rescan_button', show_label=False, enabled_when='not running')),
                        measurement_settings_group,
                        instrument_settings_group,
                        enabled_channels_group,
@@ -135,12 +140,13 @@ class SourceMeter(HasTraits):
                        handler=SourceMeterHandler)
 
     def __available_devices_map_default(self):
+        d = {}
         try:
             instruments_info = self.visa_resource.list_resources_info()
-        except visa.VisaIOError:
-            pass
+        except visa.VisaIOError as e:
+            logger.warning(e)
+            return d
 
-        d = {}
         candidates = [n for n in instruments_info.values() if n.resource_name.upper().startswith('GPIB')]
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
 
@@ -155,6 +161,9 @@ class SourceMeter(HasTraits):
         d.update(SerialUtil.probe(candidates, self.visa_resource, INSTRUMENT_IDENTIFIER))
         logger.warning(d)
         return d
+
+    def _rescan_button_fired(self):
+        self._available_devices_map = self.__available_devices_map_default()
 
     def _selected_device_changed(self, new):
         logger.info('New instrument %s', new)
@@ -225,20 +234,22 @@ class SourceMeter(HasTraits):
                 self.instrument.write('smua.measure.rangei = {:f}'.format(float(self.current_range)))
             self.instrument.write('display.smua.measure.func = smua.OUTPUT_DCAMPS')
             if self.derivative_resistance_enabled:
-                NPLC = (0.25*(self.sampling_interval/self.derivative_resistance_voltage_points))/0.02
-                logger.info('NPLC=%f', NPLC)
-                self.instrument.write('smua.measure.nplc = {:f}'.format(NPLC))
+                nplc = (0.25*(self.sampling_interval/self.derivative_resistance_voltage_points))/0.02
+                logger.info('NPLC=%f', nplc)
+                self.instrument.write('smua.measure.nplc = {:f}'.format(nplc))
                 self.instrument.write('smua.nvbuffer1.clear()')
                 self.instrument.write('smua.nvbuffer1.appendmode = 1')
                 self.instrument.write('smua.source.autorangei = smua.AUTORANGE_OFF')
                 self.instrument.write('smua.source.autorangev = smua.AUTORANGE_OFF')
-                self.instrument.write('smua.source.rangev = {:f}'.format(self.voltage+self.derivative_resistance_voltage_span*1.2))
+                self.instrument.write('smua.source.rangev = {:f}'.format(self.voltage +
+                                                                         self.derivative_resistance_voltage_span*1.2))
                 query = 'f1, msg1 = ConfigPulseVMeasureISweepLin(smua, {:f}, {:f}, {:f}, {:f}, {:f}, 0, {:d}, ' \
                         'smua.nvbuffer1, 1)'.format(self.voltage,
                                                     self.voltage - self.derivative_resistance_voltage_span,
                                                     self.voltage + self.derivative_resistance_voltage_span,
                                                     self.current_limit/1000,
-                                                    0.5*(self.sampling_interval/self.derivative_resistance_voltage_points),
+                                                    0.5*(self.sampling_interval /
+                                                         self.derivative_resistance_voltage_points),
                                                     self.derivative_resistance_voltage_points)
                 logger.info(query)
                 self.instrument.write(query)
@@ -250,10 +261,10 @@ class SourceMeter(HasTraits):
         self.start_time = time()
         self.sample_number = 0
 
-        if self.timer is None:
-            self.timer = Timer(self.sampling_interval * 1000, self._on_timer)
-        else:
-            self.timer.Start(self.sampling_interval * 1000)
+        if self.running:
+            self.timer = Timer.singleShot(max(((self.sample_number+1) * self.sampling_interval -
+                                           (time()-self.start_time))*1000, 0.01),
+                                          self._on_timer)
 
     def stop(self):
         if self.timer is not None:
@@ -268,13 +279,14 @@ class SourceMeter(HasTraits):
         data = [self.sample_number, time() - self.start_time]
         if self.derivative_resistance_enabled:
             self.instrument.write('f2, msg2 = InitiatePulseTest(1)')
-            # response = self.instrument.query('print(f2, msg2)')
-            response = self.instrument.query('printbuffer(1, {:d}, smua.nvbuffer1)'.format(self.derivative_resistance_voltage_points))
+            response = self.instrument.query('printbuffer(1, {:d}, smua.nvbuffer1)'
+                                             .format(self.derivative_resistance_voltage_points))
             self.instrument.write('smua.nvbuffer1.clear()')
             logger.info(response)
-            values = [float(n) for n in response.replace(',','').split()]
+            values = [float(n) for n in response.replace(',', '').split()]
             filtered_response = savgol_filter(values, self.derivative_resistance_voltage_points, 2, 1,
-                                              2*self.derivative_resistance_voltage_span/(self.derivative_resistance_voltage_points-1))
+                                              2*self.derivative_resistance_voltage_span /
+                                              (self.derivative_resistance_voltage_points-1))
             logger.info(1/filtered_response)
             data.append(self.voltage)
             data.append(values[self.derivative_resistance_voltage_points/2])
@@ -293,12 +305,18 @@ class SourceMeter(HasTraits):
             self.actual_current = values[0] * 1000
             self.dispatch_data(data)
 
+        if self.running:
+            self.timer = Timer.singleShot(max(((self.sample_number+1) * self.sampling_interval -
+                                           (time()-self.start_time))*1000, 0.01),
+                                          self._on_timer)
+
     def dispatch_data(self, data):
         d = dict()
-        d[self.output_channels[0]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),
-                                      dict({self.y_units[0]:data[2],
-                                            self.y_units[1]:data[3],
-                                            self.y_units[2]:data[4],
+        d[self.output_channels[0]] = (dict({self.x_units[0]: data[0],
+                                            self.x_units[1]: data[1], }),
+                                      dict({self.y_units[0]: data[2],
+                                            self.y_units[1]: data[3],
+                                            self.y_units[2]: data[4],
                                             }))
         self.acquired_data.append(d)
 

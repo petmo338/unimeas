@@ -6,14 +6,14 @@ from traitsui.api import View, Item, Group, ButtonEditor, \
 import traits.has_traits
 #traits.has_traits.CHECK_INTERFACES = 2
 from time import time
-from PyDAQmx.DAQmxFunctions import TaskHandle, DAQmxCreateTask, \
-    DAQmxCreateDOChan, DAQmxStartTask, DAQmxStopTask, DAQmxWriteDigitalLines, \
-    DAQmxClearTask
-from PyDAQmx.Task import Task
-from PyDAQmx.DAQmxConstants import DAQmx_Val_NRSE, DAQmx_Val_Volts, \
-    DAQmx_Val_Rising, DAQmx_Val_ContSamps, DAQmx_Val_Acquired_Into_Buffer, \
-    DAQmx_Val_GroupByScanNumber, DAQmx_Val_ChanForAllLines, DAQmx_Val_GroupByChannel, \
-    DAQmx_Val_RSE
+
+try:
+    from PyDAQmx.Task import Task
+    from PyDAQmx.DAQmxConstants import DAQmx_Val_RSE, DAQmx_Val_Volts, \
+        DAQmx_Val_Rising, DAQmx_Val_ContSamps, DAQmx_Val_Acquired_Into_Buffer, \
+        DAQmx_Val_GroupByScanNumber, DAQmx_Val_FiniteSamps
+except Exception as e:
+    raise ImportError(e)
 
 from numpy import zeros, ones
 import PyDAQmx

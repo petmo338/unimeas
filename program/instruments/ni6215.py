@@ -6,11 +6,14 @@ from traitsui.api import View, Item, Group, ButtonEditor,\
 from pyface.timer.api import Timer
 import traits.has_traits
 from time import time
-from PyDAQmx.Task import Task
-from PyDAQmx.DAQmxConstants import DAQmx_Val_RSE, DAQmx_Val_Volts,\
-    DAQmx_Val_Rising, DAQmx_Val_ContSamps, DAQmx_Val_Acquired_Into_Buffer,\
-    DAQmx_Val_GroupByScanNumber, DAQmx_Val_ChanPerLine, DAQmx_Val_FiniteSamps,\
-    DAQmx_Val_GroupByChannel, DAQmx_Val_OnDemand
+try:
+    from PyDAQmx.Task import Task
+    from PyDAQmx.DAQmxConstants import DAQmx_Val_RSE, DAQmx_Val_Volts, \
+        DAQmx_Val_Rising, DAQmx_Val_ContSamps, DAQmx_Val_Acquired_Into_Buffer, \
+        DAQmx_Val_GroupByScanNumber, DAQmx_Val_FiniteSamps
+except Exception as e:
+    raise ImportError(e)
+
 from numpy import zeros, float64, size, mean
 import PyDAQmx
 from ctypes import byref, c_int32, c_uint32

@@ -114,7 +114,10 @@ class TGS2442_MOSLab(HasTraits):
         self.sample_nr += 1
         measurement_time = time() - self.acq_start_time
         if self.serialport.readinto(b) == 2:
-            self.sensor_output_voltage = 4.9 * ((b[0] * 256 + b[1]) / 1024.0)
+            dig = ((b[0] * 256 + b[1]) / 1024.0)
+            if dig > 1:
+                dig = 1
+            self.sensor_output_voltage = 4.9 * dig
 
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):

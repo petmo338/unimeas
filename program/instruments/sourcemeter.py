@@ -98,18 +98,16 @@ class SourceMeter(HasTraits):
 
     measurement_settings_group = Group(HGroup(Item('constant_current_mode', show_label=False),
                                               Item('current', label='Current [mA]'),
-                                              Item('voltage_limit', label='Voltage limit [V]'),
-                                              enabled_when='not running'),
+                                              Item('voltage_limit', label='Voltage limit [V]')),
                                        HGroup(Item('constant_voltage_mode', show_label=False),
                                               Item('voltage', label='Voltage [V]'),
-                                              Item('current_limit', label='Current limit [mA]'),
+                                              Item('current_limit', label='Current limit [mA]')),
                                               derivative_resistance_calc_group,
-                                              enabled_when='not running'),
                                        Item('actual_current', style='readonly', label='Actual current [mA]',
                                             format_str='%.7f'),
                                        Item('actual_voltage', style='readonly', label='Actual Voltage [V]',
                                             format_str='%.4f'),
-                                       show_border=True, label='Setup')
+                                       show_border=True, label='Setup', enabled_when='not running')
 
     instrument_settings_group = Group(HGroup(Item('current_range',
                                                   editor=EnumEditor(name='_current_range_map')),

@@ -109,7 +109,7 @@ class GasMixerPanel(HasTraits):
     gas_mix = Dict()
 
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
-                       Item('current_column_int', label='Curr. column'),
+                       Item('current_column_int', label='Curr. column', style='readonly'),
                        Item('running_label', label='State', style='readonly'),
                        handler=GasMixerPanelHandler)
 
@@ -119,31 +119,35 @@ class GasMixerPanel(HasTraits):
             self.connect_timeout = 0
             msg = self.subscribe_queue.get()
             self.subscribe_queue.task_done()
+            # logger.debug(msg)
+
             self.connect_timeout = 0
             if msg.find('NEWCOL') != -1:
+                logger.info(msg)
                 self.current_column = ({self.x_units[0]: 0},
                                        {self.y_units[0]: int(msg.strip('NEWCOL '))})
             elif msg.find('STOP') != -1:
+                logger.info(msg)
                 if self.control_gasmixer:
                     if self.active_instrument.running is True:
                         self.active_instrument.start_stop = True
             elif msg.find('START') != -1:
+                logger.info(msg)
                 if self.control_gasmixer:
                     if self.active_instrument.running is False:
                         self.active_instrument.start_stop = True
-                    else:
-                        self.active_instrument.start_stop = True
-                        self.active_instrument.start_stop = True
-                logger.info('Received START from GasMixer, starting measurement')
             elif msg.find('HEARTBEAT') != -1:
+                logger.debug(msg)
                 if self.state != State.CONNECTED:
                     self.control_queue.put('CONNECT')
             elif msg.find('CONFIG') != -1:
+                logger.info('Found CONFIG i msg %s', msg)
                 jpath = json.loads(msg[6:])
                 self.parse_board_file(jpath.get("boardname", ""))
                 self.state = State.CONNECTED
                 self.running_label = 'GasMixer ' + State.strings[self.state]
             elif msg.find('FLOW') != -1:
+                logger.debug(msg)
                 if self.state == State.CONNECTED:
                     flow_string = msg.split(',')[0]
                     address_string = msg.split(',')[1]
@@ -186,18 +190,22 @@ class GasMixerPanel(HasTraits):
         return self.current_column
 
     def parse_board_file(self, path):
-        with open(path, 'r') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                if row[0] == 'Reg':
-                    self.gas_mix[int(row[22])] = [row[2], 0, row[23]]
+        try:
+            with open(path, 'r') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    if row[0] == 'Reg':
+                        self.gas_mix[int(row[22])] = [row[2], 0, row[23]]
+                logger.info('Gas concemtratoions: %s', self.gas_mix)
+        except IOError as e:
+            logger.error('Can not parse %s', e)
 
 
 if __name__ == '__main__':
     l = logging.getLogger()
     console = logging.StreamHandler()
     l.addHandler(console)
-    l.setLevel(logging.DEBUG)
+    l.setLevel(logging.INFO)
     l.info('test')
     g = GasMixerPanel()
     g.configure_traits()

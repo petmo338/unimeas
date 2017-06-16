@@ -332,8 +332,8 @@ class TemperatureControlPanel(HasTraits):
             self.process_value = -1
             self.adjusted_pv = -1
             self.pwm_value = -1
-            self.max31856_ctrl = 0
-            self.max31856_error = 0
+            self.max31865_ctrl = 0
+            self.max31865_error = 0
 
     def _save_detailed_log_changed(self, new):
         if new:
@@ -389,8 +389,8 @@ class TemperatureControlPanel(HasTraits):
             self.adjusted_pv = values[0] * (109.7 / values[7])
             self.PID_out = values[1]
             self.pwm_value = values[2]
-            self.max31856_ctrl = values[3]
-            self.max31856_error = values[4]
+            self.max31865_ctrl = values[3]
+            self.max31865_error = values[4]
             self.setpoint = values[5]
             self.supply_voltage = values[6]
             self.RT_resistance = values[7]

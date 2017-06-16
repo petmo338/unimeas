@@ -345,7 +345,7 @@ class SQLPanel(HasTraits):
                     self.csv_writer = csv.writer(self.filehandle,
                         lineterminator='\n', quoting=csv.QUOTE_NONNUMERIC)
                     self.csv_writer.writerow(self.column_names)
-                    logger.warning('Using ' + self.filename + 'for measurement log.')
+                    logger.warning('Using ' + self.filename + ' for measurement log.')
                 self.column_names = self.column_names
         else:
             if hasattr(self, 'csv_writer'):

@@ -77,7 +77,9 @@ class GasMixerPanelHandler(Handler):
         """ Handles a dialog-based user interface being closed by the user.
         Overridden here to stop the timer once the window is destroyed.
         """
-        info.object.polling = False
+        if info.object.gasmixer_broker is not None:
+            info.object.gasmixer_broker.exit_flag = True
+            info.object.gasmixer_broker.join()
         return
 
 
@@ -101,7 +103,10 @@ class GasMixerPanel(HasTraits):
     running_label = Str
     state = Int(State.DISCONNECTED)
     connect_timeout = Int(0)
-    polling = True
+    gasmixer_broker = Instance(GasMixerSubscriber)
+    subscribe_queue = Instance(Queue.Queue, ())
+    control_queue = Instance(Queue.Queue, ())
+    gas_mix = Dict()
 
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
                        Item('current_column_int', label='Curr. column', style='readonly'),
@@ -150,10 +155,8 @@ class GasMixerPanel(HasTraits):
                     address = int(address_string.split(':')[1])
                     self.gas_mix[address][1] = (flow / 32000.0) * float(self.gas_mix[address][2])
 
-            self.timer = Timer.singleShot(0.01, self._on_timer)
-            return
-
-        self.connect_timeout += UPDATE_INTERVAL
+            elif msg.find('KILLINGMYSELF'):
+                self.timer.stop()
         if self.connect_timeout > CONNECT_TIMEOUT:
             self.state = State.DISCONNECTED
             self.running_label = 'GasMixer ' + State.strings[self.state]
@@ -161,15 +164,13 @@ class GasMixerPanel(HasTraits):
 
     def __init__(self, **traits):
         if USE_ZMQ is False:
-            return
+            return None
         super(GasMixerPanel, self).__init__(**traits)
-        self.context = zmq.Context.instance()
-
-        self.subscriber = self.context.socket(zmq.SUB)
-        self.subscriber.connect('tcp://localhost:5561')
-        self.subscriber.setsockopt(zmq.SUBSCRIBE, "")
-        self.subscriber_poller = zmq.Poller()
-        self.subscriber_poller.register(self.subscriber, zmq.POLLIN)
+        self.gasmixer_broker = GasMixerSubscriber(self.subscribe_queue, self.control_queue)
+        if self.gasmixer_broker is None:
+            return None
+        else:
+            self.gasmixer_broker.start()
         self.state = State.DISCONNECTED
         self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 

@@ -203,11 +203,11 @@ class MeasureOverTimeTask(Task):
         self.data_subscribers.append(self.gpio_panel)
         self.data_subscribers.append(self.plot_panel)
         self.data_suppliers.append(self.gasmixer_panel)
-        self.start_stop_subscribers.append(self.plot_panel)
         self.data_suppliers.append(self.temperature_control_panel)
         self.start_stop_subscribers.append(self.sql_panel)
         self.start_stop_subscribers.append(self.gasmixer_panel)
         self.start_stop_subscribers.append(self.gpio_panel)
+        self.start_stop_subscribers.append(self.plot_panel)
         self.start_stop_subscribers.append(self.temperature_control_panel)
         return [self.sql_panel,
                 self.gasmixer_panel,
@@ -237,7 +237,7 @@ class MeasureOverTimeTask(Task):
 
     def configure_new_instrument(self):
         self.data_units = []
-        for i in range(len(self.active_instrument.output_channels)):
+        for i in xrange(len(self.active_instrument.output_channels)):
             for x_unit in self.active_instrument.x_units.values():
                 self.data_units.append(self.active_instrument.output_channels[i] + x_unit)
             for y_unit in self.active_instrument.y_units.values():

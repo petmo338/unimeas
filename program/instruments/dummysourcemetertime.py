@@ -1,27 +1,29 @@
 import logging
 from traits.api import HasTraits, Range, Instance, Float, Dict, \
     List, Unicode, Str, Array, Int, \
-   Event, Bool
+    Event, Bool
 from traitsui.api import View, Item, Group, ButtonEditor, HGroup, Handler
 import traits.has_traits
-#traits.has_traits.CHECK_INTERFACES = 2
+# traits.has_traits.CHECK_INTERFACES = 2
 from threading import Thread
 from time import sleep, time
 from numpy import random
-#import pdb
+# import pdb
 import Queue
 
 from i_instrument import IInstrument
+
 
 class AcquisitionThread(Thread, HasTraits):
     """ Acquisition loop. """
     wants_abort = False
     config = {}
-    x_data = Array(float, shape=(1,2))
-    y_data_ch0 = Array(float, shape=(1,3))
-    y_data_ch1 = Array(float, shape=(1,3))
+    x_data = Array(float, shape=(1, 2))
+    y_data_ch0 = Array(float, shape=(1, 3))
+    y_data_ch1 = Array(float, shape=(1, 3))
     start_time = Float
     sample_no = Int(0)
+
     def __init__(self, queue):
         super(AcquisitionThread, self).__init__()
         self.queue = queue
@@ -32,31 +34,32 @@ class AcquisitionThread(Thread, HasTraits):
             sleep(self.config['sampling_interval'])
             retval = [self.sample_no, time() - self.start_time]
             retval.append(self.config['mean_voltage'] +
-                           self.config['stdev_voltage'] *
-                             random.random_sample())
+                          self.config['stdev_voltage'] *
+                          random.random_sample())
             retval.append(self.config['mean_current'] +
-                           self.config['stdev_current'] *
-                             random.random_sample())
+                          self.config['stdev_current'] *
+                          random.random_sample())
             retval.append(self.config['mean_resistance'] +
-                           self.config['stdev_resistance'] *
-                             random.random_sample())
+                          self.config['stdev_resistance'] *
+                          random.random_sample())
             retval.append(self.config['mean_voltage'] +
-                           self.config['stdev_voltage'] *
-                             random.random_sample())
+                          self.config['stdev_voltage'] *
+                          random.random_sample())
             retval.append(self.config['mean_current'] +
-                           self.config['stdev_current'] *
-                             random.random_sample())
+                          self.config['stdev_current'] *
+                          random.random_sample())
             retval.append(self.config['mean_resistance'] +
-                           self.config['stdev_resistance'] *
-                             random.random_sample())
+                          self.config['stdev_resistance'] *
+                          random.random_sample())
             self.queue.put(retval)
-#            logging.getLogger(__name__).info('adding data %s', retval)
+
+
+# logging.getLogger(__name__).info('adding data %s', retval)
 
 
 class DummySourcemeterTimeHandler(Handler):
-
-#    def init(self, info):
-#        logging.getLogger(__name__).info('DummySourcemeterTimeHandler init, info: %s', info)
+    #    def init(self, info):
+    #        logging.getLogger(__name__).info('DummySourcemeterTimeHandler init, info: %s', info)
 
     def closed(self, info, is_ok):
         """ Handles a dialog-based user interface being closed by the user.
@@ -64,18 +67,19 @@ class DummySourcemeterTimeHandler(Handler):
         """
         logging.getLogger(__name__).info('DummySourcemeterTimeHandler.closed()')
         info.object.stop()
-        #if isinstance(info.object.acquisition_thread, AcquisitionThread):
+        # if isinstance(info.object.acquisition_thread, AcquisitionThread):
         #    logging.getLogger(__name__).info('DummySourcemeterTimeHandler killing thread')
         #    info.object.acquisition_thread.wants_abort = True
         #    while info.object.acquisition_thread.isAlive():
         #        info.object.trace('Waiting for acq-thread to give up')
         #        sleep(0.1)
-#        return
 
-#@provides(IInstrument)
+
+# return
+
+# @provides(IInstrument)
 class DummySourcemeterTime(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
-
 
     mean_voltage = Range(-10.0, 10.0, 3.1)
     mean_current = Range(0, .1, 0.0034)
@@ -103,14 +107,14 @@ class DummySourcemeterTime(HasTraits):
         Item('stdev_current'),
         Item('stdev_resistance'),
         Item('sampling_interval'),
-        HGroup(Item('channel_0', enabled_when = 'not running'),
-            Item('channel_1', enabled_when = 'not running')),
-        show_border = True)
+        HGroup(Item('channel_0', enabled_when='not running'),
+               Item('channel_1', enabled_when='not running')),
+        show_border=True)
 
     traits_view = View(parameter_group,
-                        Item('start_stop', label = 'Start/Stop Acqusistion',
-                                editor = ButtonEditor(label_value='button_label')), \
-                                handler=DummySourcemeterTimeHandler)
+                       Item('start_stop', label='Start/Stop Acqusistion',
+                            editor=ButtonEditor(label_value='button_label')), \
+                       handler=DummySourcemeterTimeHandler)
 
     def __init__(self, **traits):
         super(DummySourcemeterTime, self).__init__(**traits)
@@ -118,45 +122,47 @@ class DummySourcemeterTime(HasTraits):
         self.on_trait_change(self.add_data, 'acquisition_thread.sample_no')
         self.on_trait_change(self.update_config, 'sampling_interval, mean_+, stdev_+')
         self.on_trait_change(self.channel_changed, 'channel_+')
-#        self.on_trait_change(self._tmp, 'acquired_data[]')
+
+    #        self.on_trait_change(self._tmp, 'acquired_data[]')
 
 
 
     def add_data(self):
         if self.acquisition_thread.sample_no is 0:
             return
-#        pdb.set_trace()
-#        self.logger.info("Size %d", self.x_data.shape[0])
-#        logging.getLogger(__name__).info('add_data')
+        #        pdb.set_trace()
+        #        self.logger.info("Size %d", self.x_data.shape[0])
+        #        logging.getLogger(__name__).info('add_data')
         while self.queue.empty() is False:
             item = self.queue.get()
             self.queue.task_done()
-#            logging.getLogger(__name__).info('add_data, item: %s', item)
+            #            logging.getLogger(__name__).info('add_data, item: %s', item)
 
             self.dispatch_data(item)
 
     def dispatch_data(self, data):
         d = dict()
-#        if self.channel_0:
-        d[self.output_channels[0]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-                            dict({self.y_units[0]:data[2], \
-                                self.y_units[1]:data[3], \
-                                self.y_units[2]:data[4],}))
-#            logging.getLogger(__name__).info('y: %s', d['ch0'][1])
-        #else:
+        #        if self.channel_0:
+        d[self.output_channels[0]] = (dict({self.x_units[0]: data[0], self.x_units[1]: data[1], }),
+                                      dict({self.y_units[0]: data[2],
+                                            self.y_units[1]: data[3],
+                                            self.y_units[2]: data[4], }))
+        #            logging.getLogger(__name__).info('y: %s', d['ch0'][1])
+        # else:
         #    d[self.output_channels[0]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-#                                dict())
-#        if self.channel_1:
-        d[self.output_channels[1]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
-                            dict({self.y_units[0]:data[5], \
-                                self.y_units[1]:data[6], \
-                                self.y_units[2]:data[7],}))
-        #else:
+        #                                dict())
+        #        if self.channel_1:
+        d[self.output_channels[1]] = (dict({self.x_units[0]: data[0], self.x_units[1]: data[1], }),
+                                      dict({self.y_units[0]: data[5],
+                                            self.y_units[1]: data[6],
+                                            self.y_units[2]: data[7], }))
+        # else:
         #    d[self.output_channels[1]] = (dict({self.x_units[0]:data[0], self.x_units[1]:data[1],}),\
         #                        dict())
 
         self.acquired_data.append(d)
-#        logging.getLogger(__name__).info('acquired_data: %s', self.acquired_data)
+
+    #        logging.getLogger(__name__).info('acquired_data: %s', self.acquired_data)
 
 
     def initialize(self):
@@ -169,7 +175,7 @@ class DummySourcemeterTime(HasTraits):
         self.logger.info('DummySourcemeterTime close()')
 
     def start(self):
-#        self.logger.info('DummySourcemeterTime start()')
+        #        self.logger.info('DummySourcemeterTime start()')
 
         self.acquisition_thread = AcquisitionThread(self.queue)
         self.acquisition_thread.config['stdev_current'] = self.stdev_current
@@ -182,7 +188,6 @@ class DummySourcemeterTime(HasTraits):
         self.acquisition_thread.start_time = time()
         self.acquisition_thread.start()
         self.running = True
-
 
     def stop(self):
         self.logger.info('DummySourcemeterTime stop()')
@@ -200,16 +205,15 @@ class DummySourcemeterTime(HasTraits):
     enabled_channels = List(Bool)
     acquired_data = List(Dict)
 
-    y_units = Dict({0:'Voltage', 1:'Current', 2:'Resistance'})
-    x_units = Dict({0:'SampleNumber', 1:'Time'})
-
+    y_units = Dict({0: 'Voltage', 1: 'Current', 2: 'Resistance'})
+    x_units = Dict({0: 'SampleNumber', 1: 'Time'})
 
     ##########################################################################
 
     def _start_stop_changed(self, old, new):
         self.logger.info('start_stop_acq_fired, %s, %s', old, new)
         if self.running:
-            self.button_label= 'Start'
+            self.button_label = 'Start'
             self.stop()
         else:
             self.button_label = 'Stop'
@@ -231,21 +235,22 @@ class DummySourcemeterTime(HasTraits):
             self.acquisition_thread.config['mean_resistance'] = self.mean_resistance
             self.acquisition_thread.config['sampling_interval'] = self.sampling_interval
 
-#    @on_trait_change('acquired_data[]')
-#    def _tmp(self):
-#        logging.getLogger(__name__).info(' @on_trait_change(acquired_data)')
-#if __name__ == '__main__':
-#    a = AcquisitionThread()
-#    d = DummySourcemeterTime()
-#    d.tracer = SimpleTracer()
-#    d.on_trait_change(d._log_changed)
-#    d.traits_view = View(d.parameter_group)
+        #    @on_trait_change('acquired_data[]')
+        #    def _tmp(self):
+        #        logging.getLogger(__name__).info(' @on_trait_change(acquired_data)')
+        # if __name__ == '__main__':
+        #    a = AcquisitionThread()
+        #    d = DummySourcemeterTime()
+        #    d.tracer = SimpleTracer()
+        #    d.on_trait_change(d._log_changed)
+        #    d.traits_view = View(d.parameter_group)
 
-#    d.tracer.configure_traits()
-#    d.configure_traits()
+        #    d.tracer.configure_traits()
+        #    d.configure_traits()
 
-    #d.start()
-#    for t in d.traits():
+        # d.start()
+
+# for t in d.traits():
 #        if 'mean' in t:
 #            a.config[t] = d.get(t)[t]
 #        if 'stdev' in t:

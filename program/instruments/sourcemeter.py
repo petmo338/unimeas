@@ -260,8 +260,8 @@ class SourceMeter(HasTraits):
         self.sample_number = 0
 
         if self.running:
-            self.timer = Timer.singleShot(max(((self.sample_number+1) * self.sampling_interval -
-                                           (time()-self.start_time))*1000, 0.01),
+            self.timer = Timer.singleShot(max(((self.sample_number + 1) * self.sampling_interval -
+                                               (time() - self.start_time)) * 1000, 0.01),
                                           self._on_timer)
 
     def stop(self):
@@ -298,14 +298,17 @@ class SourceMeter(HasTraits):
             values = [float(f) for f in resp.split()]
             data.append(values[1])
             data.append(values[0])
-            data.append(values[1]/values[0])
+            if (values[0] != 0):
+                data.append(values[1]/values[0])
+            else:
+                data.append(1e9)
             self.actual_voltage = values[1]
             self.actual_current = values[0] * 1000
             self.dispatch_data(data)
 
         if self.running:
-            self.timer = Timer.singleShot(max(((self.sample_number+1) * self.sampling_interval -
-                                           (time()-self.start_time))*1000, 0.01),
+            self.timer = Timer.singleShot(max(((self.sample_number + 1) * self.sampling_interval -
+                                               (time() - self.start_time)) * 1000, 0.01),
                                           self._on_timer)
 
     def dispatch_data(self, data):

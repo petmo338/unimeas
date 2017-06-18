@@ -218,6 +218,7 @@ class MeasureOverTimeTask(Task):
     #### Trait change handlers ################################################
 
     @on_trait_change('active_instrument')
+    @on_trait_change('gasmixer_panel.y_units[]')
     def _update_active_instrument(self, obj, name, old, new):
         # try:
         #    self.data_suppliers.remove(old)
@@ -245,6 +246,7 @@ class MeasureOverTimeTask(Task):
         for supplier in self.data_suppliers:
             for unit in supplier.y_units.values():
                 self.data_units.append(supplier.output_channels[0] + unit)
+        logger.debug('Logging columns: %s', self.data_units)
         self.sql_panel.set_column_names(self.data_units)
 
     @on_trait_change('active_instrument.start_stop')

@@ -6,7 +6,9 @@ import threading
 import Queue
 import json
 import csv
+from random import random
 
+logger = logging.getLogger(__name__)
 from time import time, sleep
 
 try:
@@ -16,7 +18,6 @@ except ImportError as e:
     USE_ZMQ = False
 else:
     USE_ZMQ = True
-logger = logging.getLogger(__name__)
 
 UPDATE_INTERVAL = 500
 CONNECT_TIMEOUT = 5000
@@ -94,8 +95,8 @@ class GasMixerPanel(HasTraits):
     button = Event
     y_units = Dict({0: 'column'})
     x_units = Dict({0: 'time'})
-    current_column = Tuple(Dict, Dict)
-    current_column_int = Int(0)
+    output_data = Tuple(Dict, Dict)
+    current_column = Int(0)
 
     output_channels = Dict({0: 'gasmixer'})
     control_gasmixer = Bool(False)
@@ -107,9 +108,13 @@ class GasMixerPanel(HasTraits):
     subscribe_queue = Instance(Queue.Queue, ())
     control_queue = Instance(Queue.Queue, ())
     gas_mix = Dict()
+    fake_gasmixer_connection = False
+    log_gas_flow = True
+
 
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
-                       Item('current_column_int', label='Curr. column', style='readonly'),
+                       Item('log_gas_flow', label='Add gas flow to meas. data', enable_when='not running'),
+                       Item('current_column', label='Curr. column', style='readonly'),
                        Item('running_label', label='State', style='readonly'),
                        handler=GasMixerPanelHandler)
 
@@ -124,8 +129,8 @@ class GasMixerPanel(HasTraits):
             self.connect_timeout = 0
             if msg.find('NEWCOL') != -1:
                 logger.info(msg)
-                self.current_column = ({self.x_units[0]: 0},
-                                       {self.y_units[0]: int(msg.strip('NEWCOL '))})
+                self.current_column = int(msg.strip('NEWCOL '))
+
             elif msg.find('STOP') != -1:
                 logger.info(msg)
                 if self.control_gasmixer:
@@ -160,6 +165,10 @@ class GasMixerPanel(HasTraits):
         if self.connect_timeout > CONNECT_TIMEOUT:
             self.state = State.DISCONNECTED
             self.running_label = 'GasMixer ' + State.strings[self.state]
+        if self.fake_gasmixer_connection:
+            self.current_column = int(random.random()*30)
+            for mix in self.gas_mix:
+                
         self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
     def __init__(self, **traits):
@@ -174,10 +183,7 @@ class GasMixerPanel(HasTraits):
         self.state = State.DISCONNECTED
         self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
-    def _current_column_changed(self, old, new):
-        self.current_column_int = new[1][self.y_units[0]]
-
-    def _current_column_default(self):
+    def _output_data_default(self):
         return {self.x_units[0]: 0}, {self.y_units[0]: 0}
 
     def _running_label_default(self):
@@ -187,7 +193,9 @@ class GasMixerPanel(HasTraits):
         return
 
     def get_data(self):
-        return self.current_column
+        self.output_data = ({self.x_units[0]: 0},
+                            {self.y_units[0]: int(msg.strip('NEWCOL '))})
+        return self.output_data
 
     def parse_board_file(self, path):
         try:
@@ -196,10 +204,22 @@ class GasMixerPanel(HasTraits):
                 for row in reader:
                     if row[0] == 'Reg':
                         self.gas_mix[int(row[22])] = [row[2], 0, row[23]]
-                logger.info('Gas concemtratoions: %s', self.gas_mix)
+                self._update_y_units()
+                logger.info('Gas concentratoions: %s', self.gas_mix)
         except IOError as e:
             logger.error('Can not parse %s', e)
 
+    def start_fake_gasmixer(self):
+        for address, name in enumerate(['N2_1', 'O2_1', 'NO2', 'CO', 'NO', 'SO2']):
+            self.gas_mix[address] = [name, 0, address*5]
+        self._update_y_units()
+
+    def _update_y_units(self):
+        if self.log_gas_flow:
+            for i, name in enumerate(self.gas_mix.values()[0]):
+                self.y_units[i+1] = name
+        else:
+            self.y_units ={0, 'column'}
 
 if __name__ == '__main__':
     l = logging.getLogger()

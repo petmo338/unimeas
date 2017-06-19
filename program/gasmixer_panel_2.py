@@ -99,7 +99,7 @@ class GasMixerPanel(HasTraits):
     current_column = Int(0)
 
     output_channels = Dict({0: 'gasmixer'})
-    control_gasmixer = Bool(False)
+    control_gasmixer = Bool(True)
     connected = Bool(False)
     running_label = Str
     state = Int(State.DISCONNECTED)
@@ -109,11 +109,11 @@ class GasMixerPanel(HasTraits):
     control_queue = Instance(Queue.Queue, ())
     gas_mix = Dict()
     fake_gasmixer_connection = False
-    log_gas_flow = True
+    log_gas_flow = Bool(True)
 
 
     traits_view = View(Item('control_gasmixer', label='Follow Start/Stop from GasMixer', enabled_when='state is 3'),
-                       Item('log_gas_flow', label='Add gas flow to meas. data', enable_when='not running'),
+                       Item('log_gas_flow', label='Add gas flow to meas. data', enabled_when='not running'),
                        Item('current_column', label='Curr. column', style='readonly'),
                        Item('running_label', label='State', style='readonly'),
                        handler=GasMixerPanelHandler)
@@ -133,14 +133,18 @@ class GasMixerPanel(HasTraits):
 
             elif msg.find('STOP') != -1:
                 logger.info(msg)
+                for gas in self.gas_mix.values():
+                    gas[1] = 0
                 if self.control_gasmixer:
-                    if self.active_instrument.running is True:
-                        self.active_instrument.start_stop = True
+                    if hasattr(self, 'active_instrument'):
+                        if self.active_instrument.running is True:
+                            self.active_instrument.start_stop = True
             elif msg.find('START') != -1:
                 logger.info(msg)
                 if self.control_gasmixer:
-                    if self.active_instrument.running is False:
-                        self.active_instrument.start_stop = True
+                    if hasattr(self, 'active_instrument'):
+                        if self.active_instrument.running is False:
+                            self.active_instrument.start_stop = True
             elif msg.find('HEARTBEAT') != -1:
                 logger.debug(msg)
                 if self.state != State.CONNECTED:
@@ -165,10 +169,6 @@ class GasMixerPanel(HasTraits):
         if self.connect_timeout > CONNECT_TIMEOUT:
             self.state = State.DISCONNECTED
             self.running_label = 'GasMixer ' + State.strings[self.state]
-        if self.fake_gasmixer_connection:
-            self.current_column = int(random.random()*30)
-            for mix in self.gas_mix:
-                
         self.timer = Timer.singleShot(UPDATE_INTERVAL, self._on_timer)
 
     def __init__(self, **traits):
@@ -190,11 +190,18 @@ class GasMixerPanel(HasTraits):
         return 'GasMixer ' + State.strings[self.state]
 
     def start_stop(self, starting):
+        if starting:
+            self.running = True
+        else:
+            self.running = False
         return
 
     def get_data(self):
-        self.output_data = ({self.x_units[0]: 0},
-                            {self.y_units[0]: int(msg.strip('NEWCOL '))})
+        d = {'column': self.current_column}
+        for gas in self.gas_mix.values():
+            d[gas[0]] = gas[1]
+
+        self.output_data = ({self.x_units[0]: 0}, d)
         return self.output_data
 
     def parse_board_file(self, path):
@@ -209,17 +216,16 @@ class GasMixerPanel(HasTraits):
         except IOError as e:
             logger.error('Can not parse %s', e)
 
-    def start_fake_gasmixer(self):
-        for address, name in enumerate(['N2_1', 'O2_1', 'NO2', 'CO', 'NO', 'SO2']):
-            self.gas_mix[address] = [name, 0, address*5]
-        self._update_y_units()
-
     def _update_y_units(self):
         if self.log_gas_flow:
-            for i, name in enumerate(self.gas_mix.values()[0]):
-                self.y_units[i+1] = name
+            for i, gas_mix in enumerate(self.gas_mix.values()):
+                self.y_units[i+1] = gas_mix[0]
         else:
-            self.y_units ={0, 'column'}
+            self.y_units = {0: 'column'}
+        logger.debug('Current Y units: %s', self.y_units)
+
+    def _log_gas_flow_changed(self):
+        self._update_y_units()
 
 if __name__ == '__main__':
     l = logging.getLogger()

@@ -196,6 +196,8 @@ class MeasureOverTimeTask(Task):
     def _panels_default(self):
         self.sql_panel = SQLPanel()
         self.gasmixer_panel = GasMixerPanel()
+        self.gasmixer_panel.on_trait_change(self._update_active_instrument, 'y_units[]')
+        self.gasmixer_panel.on_trait_change(self._update_active_instrument, 'y_units_items')
         self.gpio_panel = GPIOPanel()
         self.plot_panel = PlotPanel()
         self.temperature_control_panel = TemperatureControlPanel()
@@ -218,7 +220,6 @@ class MeasureOverTimeTask(Task):
     #### Trait change handlers ################################################
 
     @on_trait_change('active_instrument')
-    @on_trait_change('gasmixer_panel.y_units[]')
     def _update_active_instrument(self, obj, name, old, new):
         # try:
         #    self.data_suppliers.remove(old)
@@ -238,7 +239,7 @@ class MeasureOverTimeTask(Task):
 
     def configure_new_instrument(self):
         self.data_units = []
-        for i in xrange(len(self.active_instrument.output_channels)):
+        for i in range(len(self.active_instrument.output_channels)):
             for x_unit in self.active_instrument.x_units.values():
                 self.data_units.append(self.active_instrument.output_channels[i] + x_unit)
             for y_unit in self.active_instrument.y_units.values():
@@ -260,6 +261,6 @@ class MeasureOverTimeTask(Task):
             data = self.active_instrument.acquired_data.pop(0).copy()
             for supplier in self.data_suppliers:
                 data[supplier.output_channels[0]] = supplier.get_data()
-            #            data['gasmixer'] = self.gasmixer_panel.current_column
+            # data['gasmixer'] = self.gasmixer_panel.current_column
             for subscriber in self.data_subscribers:
                 subscriber.add_data(data)

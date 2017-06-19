@@ -10,7 +10,7 @@ from mainwindow_plugin import MainWindowPlugin
 # Local imports.
 from unimeas_application import UniMeasApplication
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)-2s %(name)-12s %(levelname)-8s %(message)s',
                     filename='unimeas.log')
 # define a Handler which writes INFO messages or higher to the sys.stderr

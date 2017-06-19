@@ -39,5 +39,3 @@ ispatch
   File "z:\unimeas\program\plot_panel.py", line 147, in add_data
     self.data[key + rows_inc][self.index] = channel_data_x[self.x_units[key]]
 IndexError: index 172800 is out of bounds for axis 0 with size 172800
-
-

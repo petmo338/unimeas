@@ -1,11 +1,9 @@
-from traits.api import HasTraits, Bool, Int, List, Float, Instance,\
-    Str, Button, Dict, File, Array, on_trait_change
-from traitsui.api import Item, View, Group, HGroup, Handler, \
-    TableEditor, EnumEditor, spring, VGroup, ButtonEditor
+from traits.api import HasTraits, Bool, Int, List, Float, Instance, Str, Button, Dict, File, Array, on_trait_change
+from traitsui.api import Item, View, Group, HGroup, Handler, TableEditor, EnumEditor, spring, VGroup, ButtonEditor
 from traitsui.table_column import NumericColumn
 import logging
 import serial
-from time import sleep, time, strftime
+from time import time, strftime
 from pyface.timer.api import Timer
 import threading
 import Queue
@@ -129,6 +127,11 @@ class TableEntry(HasTraits):
     ramp = Float
     remaining = Int
 
+    def __init__(self, **kwargs):
+        super(TableEntry, self).__init__(**kwargs)
+        self.on_trait_change(self._update_ramp, 'start_temp')
+        self.on_trait_change(self._update_ramp, 'end_temp')
+
     def _time_changed(self, new):
         if new < 1:
             new = 1
@@ -140,16 +143,16 @@ class TableEntry(HasTraits):
             self.trait_set(trait_change_notify=False, time=int(60.0 * (self.end_temp - self.start_temp) / new))
             self.remaining = self.time
 
-    @on_trait_change('start_temp', 'end_temp')
     def _update_ramp(self, obj, old, new):
-        self.trait_set(trait_change_notify=False, ramp=int((self.end_temp - self.start_temp) / (self.time / 60.0)))
+        if self.time != 0:
+            self.trait_set(trait_change_notify=False, ramp=int((self.end_temp - self.start_temp) / (self.time / 60.0)))
 
 
 table_editor = TableEditor(
     columns=[NumericColumn(name='time', label='Seconds', horizontal_alignment='right'),
              NumericColumn(name='start_temp', label='Start temp'),
              NumericColumn(name='end_temp', label='End temp'),
-             NumericColumn(name='ramp', label=u'Ramp \u00b0/min'),
+             NumericColumn(name='ramp', label=u'Ramp \u00b0/min', editable=False, read_only_cell_color=0xF4F3EE),
              NumericColumn(name='remaining', editable=False, label='Time left', width=60,
                            read_only_cell_color=0xF4F3EE)],
     deletable=True,
@@ -198,7 +201,7 @@ class TemperatureControlPanel(HasTraits):
     current_temp = Float
     actual_temp = Float
     process_value = Float
-    second_process_value = Float
+    second_process_value = Float(999)
     second_ref_resistance = Float(1000)
     adjusted_pv = Float
     PID_out = Float
@@ -226,8 +229,8 @@ class TemperatureControlPanel(HasTraits):
 
     use_direct_pv = Bool(False)
     pv_set_direct = Int(0)
-    temp_setpoint = Float
-    resistance_setpoint = Float
+    temp_setpoint = Float(-1)
+    resistance_setpoint = Float(-1)
     supply_voltage_setpoint = Float(15.0)
     RT_resistance_setpoint = Float(109.71)
     temperature_table = Array
@@ -271,25 +274,26 @@ class TemperatureControlPanel(HasTraits):
                        Item('process_value', label=u'Res  [\u2126]', style='readonly', format_str='%.2f'),
                        Item('adjusted_pv', label=u'Adj. res  [\u2126]', style='readonly', format_str='%.2f'),
                        Item('setpoint', style='readonly', format_str='%.2f'),
-                       Item('second_process_value', label=u'Res (extra) [\u2126]', style='readonly', format_str='%.2f')),
-                       spring,
-                       VGroup(Item('pwm_value', style='readonly', format_str='%d'),
-                              Item('max31865_ctrl', style='readonly', format_str='%#04x'),
-                              Item('max31865_error', style='readonly', format_str='%#04x')),
-                       spring,
-                       VGroup(Item('PID_out', style='readonly', format_str='%.2f'),
-                              Item('supply_voltage', style='readonly', format_str='%.2f'),
-                              Item('RT_resistance', style='readonly', format_str='%.2f'))),
-                label='Diagnostic parameters', show_border=True,
-            ),
-            HGroup(
-                Group(
-                    VGroup(Item('temp_setpoint', format_str='%.1f')),
-                    VGroup(Item('resistance_setpoint', format_str='%.1f')),
-                    VGroup(Item('supply_voltage_setpoint', format_str='%.1f')),
-                    VGroup(Item('RT_resistance_setpoint', format_str='%.1f')),
-                    VGroup(Item('second_ref_resistance', label='Ref res (extra)', format_str='%.1f')),
-                    Item('set_parameters', enabled_when='connected'),
+                       Item('second_process_value', label=u'Res (extra) [\u2126]', style='readonly',
+                            format_str='%.2f')),
+                spring,
+                VGroup(Item('pwm_value', style='readonly', format_str='%d'),
+                       Item('max31865_ctrl', style='readonly', format_str='%#04x'),
+                       Item('max31865_error', style='readonly', format_str='%#04x')),
+                spring,
+                VGroup(Item('PID_out', style='readonly', format_str='%.2f'),
+                       Item('supply_voltage', style='readonly', format_str='%.2f'),
+                       Item('RT_resistance', style='readonly', format_str='%.2f'))),
+            label='Diagnostic parameters', show_border=True,
+        ),
+        HGroup(
+            Group(
+                VGroup(Item('temp_setpoint', format_str='%.1f')),
+                VGroup(Item('resistance_setpoint', format_str='%.1f')),
+                VGroup(Item('supply_voltage_setpoint', format_str='%.1f')),
+                VGroup(Item('RT_resistance_setpoint', format_str='%.1f')),
+                VGroup(Item('second_ref_resistance', label='Ref res (extra)', format_str='%.1f')),
+                Item('set_parameters', enabled_when='connected'),
                 label='Adjustable parameters', show_border=True,
             ),
             Group(
@@ -327,13 +331,6 @@ class TemperatureControlPanel(HasTraits):
             self.update_PID_values = 3
         else:
             self.connect_button_string = 'Connect'
-            self.actual_temp = -1
-            self.PID_out = 0
-            self.process_value = -1
-            self.adjusted_pv = -1
-            self.pwm_value = -1
-            self.max31865_ctrl = 0
-            self.max31865_error = 0
 
     def _save_detailed_log_changed(self, new):
         if new:
@@ -381,7 +378,7 @@ class TemperatureControlPanel(HasTraits):
             try:
                 values = self.get_parameters_queue.get_nowait()
             except Queue.Empty:
-                logger.error('No temp recieved from SerialHandler - Strange')
+                logger.error('No temp received from SerialHandler - Strange')
                 pass
             self.get_parameters_queue.task_done()
             self.actual_temp = resistance_to_temp(values[0], values[7])
@@ -389,8 +386,8 @@ class TemperatureControlPanel(HasTraits):
             self.adjusted_pv = values[0] * (109.7 / values[7])
             self.PID_out = values[1]
             self.pwm_value = values[2]
-            self.max31865_ctrl = values[3]
-            self.max31865_error = values[4]
+            self.max31856_ctrl = values[3]
+            self.max31856_error = values[4]
             self.setpoint = values[5]
             self.supply_voltage = values[6]
             self.RT_resistance = values[7]
@@ -496,19 +493,17 @@ class TemperatureControlPanel(HasTraits):
             self.pwm_set_direct = int(new)
             self._update_pid_fired()
             return
-        self._set_parameters_fired()
-
-    def _com_ports_list_default(self):
-        import serial.tools.list_ports as lp
-        valid_ports = []
-        for p in lp.grep('Arduino'):
-            valid_ports.append(p[0])
-        return valid_ports
-
-    def _set_parameters_fired(self):
         self.set_parameters_queue.put_nowait(struct.pack('<c5B5f', 's', 0, 0, 0, 0, self.pwm_table_index,
                                                          self.resistance_setpoint, self.supply_voltage_setpoint,
                                                          self.RT_resistance_setpoint, 0, 0))
+
+    def _com_ports_list_default(self):
+        import serial.tools.list_ports as lp
+        valid_ports = [p[0] for p in lp.grep('Due')]
+        return valid_ports
+
+    def _set_parameters_fired(self):
+        self.current_temp = self.temp_setpoint
 
     def _update_pid_fired(self):
         self.set_parameters_queue.put_nowait(struct.pack('<c4f', 'p', self.pid_P, self.pid_I, self.pid_D, self.pid_N))

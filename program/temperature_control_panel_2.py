@@ -500,9 +500,7 @@ class TemperatureControlPanel(HasTraits):
 
     def _com_ports_list_default(self):
         import serial.tools.list_ports as lp
-        valid_ports = []
-        for p in lp.grep('Arduino'):
-            valid_ports.append(p[0])
+        valid_ports = [p[0] for p in lp.grep('Due')]
         return valid_ports
 
     def _set_parameters_fired(self):

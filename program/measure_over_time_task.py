@@ -205,11 +205,11 @@ class MeasureOverTimeTask(Task):
         self.data_subscribers.append(self.gpio_panel)
         self.data_subscribers.append(self.plot_panel)
         self.data_suppliers.append(self.gasmixer_panel)
+        self.start_stop_subscribers.append(self.plot_panel)
         self.data_suppliers.append(self.temperature_control_panel)
         self.start_stop_subscribers.append(self.sql_panel)
         self.start_stop_subscribers.append(self.gasmixer_panel)
         self.start_stop_subscribers.append(self.gpio_panel)
-        self.start_stop_subscribers.append(self.plot_panel)
         self.start_stop_subscribers.append(self.temperature_control_panel)
         return [self.sql_panel,
                 self.gasmixer_panel,

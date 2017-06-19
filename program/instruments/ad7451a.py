@@ -1,16 +1,15 @@
 import logging
-import os
+
 from traits.api import HasTraits, Range, Instance, Bool, Dict, \
     List, Float, Unicode, Str, Int, on_trait_change, Event, Button, Enum
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
-import traits.has_traits
+
 from time import time
 from serial_util import SerialUtil
 from pyface.timer.api import Timer
 import visa
 
-from i_instrument import IInstrument
 logger = logging.getLogger(__name__)
 INSTRUMENT_IDENTIFIER = ['ADC', '7451']
 
@@ -20,7 +19,7 @@ class ad7451aHandler(Handler):
         if info.object.instrument is not None:
             info.object.instrument.close()
 
-#@provides(IInstrument)
+
 class ad7451a(HasTraits):
     """Keithley 2100 multimeter driver"""
     sampling_interval = Range(0.05, 10, 1)
@@ -48,7 +47,7 @@ class ad7451a(HasTraits):
     sample_nr = Int
     name = Unicode('ADCMT 7451A')
     running = Bool(False)
-    output_channels = Dict({0:'chan0'})
+    output_channels = Dict({0: 'chan0'})
     enabled_channels = List(Bool)
 
     traits_view = View(HGroup(Label('Device: '), Item('selected_device',
@@ -103,16 +102,14 @@ class ad7451a(HasTraits):
             data = self.acq_value
             pass
         self.acq_value = float(data)
-        self.measurement_time = time() - self.acq_start_time   
+        self.measurement_time = time() - self.acq_start_time
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):
-
-            d[self.output_channels[i]] = (dict({self.x_units[0]:self.sample_nr,
-                                                self.x_units[1]:self.measurement_time}),
+            d[self.output_channels[i]] = (dict({self.x_units[0]: self.sample_nr,
+                                                self.x_units[1]: self.measurement_time}),
                                           self._fix_output_dict(self.acq_value))
-        self.timer = Timer.singleShot(max(0,
-                                          ((float(self.sample_nr) * self.sampling_interval) -
-                                           self.measurement_time) * 1000),
+        self.timer = Timer.singleShot(max(0, ((float(self.sample_nr) * self.sampling_interval)
+                                              - self.measurement_time) * 1000),
                                       self.add_data)
         self.acquired_data.append(d)
 
@@ -136,7 +133,7 @@ class ad7451a(HasTraits):
         if self.selected_device == '':
             return
         if self.running:
-            self.button_label= 'Start'
+            self.button_label = 'Start'
             self.stop()
         else:
             self.button_label = 'Stop'

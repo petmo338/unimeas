@@ -178,17 +178,14 @@ class SourceMeter(HasTraits):
             self.current_limit_exceeded = True
 
         if self.sample_nr < len(self.output_values):
-            # values = self.instrument.query_values('print(smua.measureivandstep(%e))' % self.output_values[self.sample_nr])
-            resp = self.instrument.query('print(smua.measureivandstep(%e))' % self.output_values[self.sample_nr])
-            values = [float(f) for f in resp.split()]
+            values = self.instrument.query_values('print(smua.measureivandstep(%e))' % self.output_values[self.sample_nr])
             self.current_voltage = values[1]
             self.current_current = values[0] * 1000
             d[self.output_channels[0]] = (dict({self.x_units[0] : values[1]}),
                                         dict({self.y_units[0] : values[0]}))
             self.acquired_data.append(d)
         else:
-            resp = self.instrument.query('print(smua.measure.iv())')
-            values = [float(f) for f in resp.split()]
+            values = self.instrument.query_values('print(smua.measure.iv())')
             self.current_voltage = values[1]
             self.current_current = values[0] * 1000
             d[self.output_channels[0]] = (dict({self.x_units[0] : values[1]}),

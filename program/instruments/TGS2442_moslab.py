@@ -6,13 +6,12 @@ from traits.api import HasTraits, Range, Instance, Bool, Dict, \
 from traitsui.api import View, Item, Group, ButtonEditor, \
     EnumEditor, Label, HGroup, spring, VGroup, Handler
 import traits.has_traits
-# traits.has_traits.CHECK_INTERFACES = 2
+#traits.has_traits.CHECK_INTERFACES = 2
 from time import time, sleep
 from numpy import zeros, ones
 from pyface.timer.api import Timer
 
 from i_instrument import IInstrument
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,31 +21,31 @@ class TGS2442Handler(Handler):
             if info.object.serialport.isOpen():
                 info.object.serialport.close()
 
-
-# @provides(IInstrument)
+#@provides(IInstrument)
 class TGS2442_MOSLab(HasTraits):
     """Dummy instrument for generation of values (V, I, R) over time"""
     CHANNEL_CELL_WIDTH = 25.0
 
-    #    sampling_interval = Range(0.05, 10, 1)
+
+#    sampling_interval = Range(0.05, 10, 1)
     start_stop = Event
     refresh_list = Button
-    #    ai0 =Bool(True)
-    # ai1 =Bool(False)
-    # ai2 =Bool(False)
-    # ai3 =Bool(False)
-    # ai4 =Bool(False)
-    # ai5 =Bool(False)
-    # ai6 =Bool(False)
-    # ai7 =Bool(False)
-    # ai8 =Bool(False)
-    # ai9 =Bool(False)
-    # ai10 =Bool(False)
-    # ai11 =Bool(False)
-    # ai12 =Bool(False)
-    # ai13 =Bool(False)
-    # ai14 =Bool(False)
-    # ai15 =Bool(False)
+#    ai0 =Bool(True)
+    #ai1 =Bool(False)
+    #ai2 =Bool(False)
+    #ai3 =Bool(False)
+    #ai4 =Bool(False)
+    #ai5 =Bool(False)
+    #ai6 =Bool(False)
+    #ai7 =Bool(False)
+    #ai8 =Bool(False)
+    #ai9 =Bool(False)
+    #ai10 =Bool(False)
+    #ai11 =Bool(False)
+    #ai12 =Bool(False)
+    #ai13 =Bool(False)
+    #ai14 =Bool(False)
+    #ai15 =Bool(False)
     button_label = Str('Start')
 
     output_unit = 0
@@ -58,48 +57,44 @@ class TGS2442_MOSLab(HasTraits):
     sensor_output_voltage = Float
     sample_nr = Int
 
-    traits_view = View(HGroup(Label('Device: '), Item('portname',
-                                                      show_label=False,
-                                                      editor=EnumEditor(name='_available_ports'),
-                                                      enabled_when='not running'),
-                              Item('refresh_list')),
-                       Item('start_stop', label='Start/Stop Acqusistion',
-                            editor=ButtonEditor(label_value='button_label')),
+
+    traits_view = View(HGroup(Label('Device: '), Item('portname', \
+                        show_label = False,
+                            editor = EnumEditor(name='_available_ports'), \
+                            enabled_when='not running'),
+                            Item('refresh_list')), \
+                        Item('start_stop', label = 'Start/Stop Acqusistion',
+                                editor = ButtonEditor(label_value='button_label')),
                        Item('sensor_output_voltage', style='readonly', format_str='%.3f'),
                        Item('sample_nr', style='readonly'),
-                       handler=TGS2442Handler)
+                                handler=TGS2442Handler)
 
-    # def __init__(self):
+    #def __init__(self):
     #    self.on_trait_change(self.add_data, 'acqusition_task.output')
     #    self.on_trait_change(self.channel_changed, 'ai+')
 
     def _enabled_channels_default(self):
         return [True]
 
-    # def __available_ports_default(self):
-    #     l = []
-    #     if os.name == 'nt':
-    #         # windows
-    #         for i in range(0, 8):
-    #             #                l.append('COM' + str(i + 1))
-    #             try:
-    #                 s = serial.Serial(i)
-    #                 s.close()
-    #                 l.append('COM' + str(i + 1))
-    #             except serial.SerialException:
-    #                 pass
-    #     else:
-    #         # unix
-    #         import serial.tools.list_ports as lp
-    #         for port in lp.comports():
-    #             l.append(port[0])
-    #     return l
-    #
-
     def __available_ports_default(self):
-        import serial.tools.list_ports as lp
-        valid_ports = [p[0] for p in lp.grep('Uno')]
-        return valid_ports
+        l = []
+        if os.name == 'nt':
+            # windows
+            for i in range(0,8):
+#                l.append('COM' + str(i + 1))
+                try:
+                    s = serial.Serial(i)
+                    s.close()
+                    l.append('COM' + str(i + 1))
+                except serial.SerialException:
+                    pass
+        else:
+            # unix
+            import serial.tools.list_ports as lp
+            for port in lp.comports():
+                l.append(port[0])
+        return l
+
 
     def _refresh_list_fired(self):
         self._available_devices = self.__available_ports_default()
@@ -113,29 +108,24 @@ class TGS2442_MOSLab(HasTraits):
         b = bytearray(2)
         self.sample_nr += 1
         measurement_time = time() - self.acq_start_time
-        if self.serialport.readinto(b) == 2:
-            dig = ((b[0] * 256 + b[1]) / 1024.0)
-            if dig > 1:
-                dig = 1
-            self.sensor_output_voltage = 4.9 * dig
-
+        self.serialport.readinto(b)
         d = dict()
         for i, enabled in enumerate(self.enabled_channels):
-            d[self.output_channels[i]] = (dict({self.x_units[0]: self.sample_nr,
-                                                self.x_units[1]: measurement_time}),
-                                          dict({self.y_units[0]: self.sensor_output_voltage}))
-        self.acquired_data.append(d)
+            d[self.output_channels[i]] = (dict({self.x_units[0]:self.sample_nr,
+                                            self.x_units[1]:measurement_time}),\
+                            dict({self.y_units[0]:4.9*((b[0]*256 + b[1])/1024.0)}))
         self.timer = Timer.singleShot(max(0, ((float(self.sample_nr)) - measurement_time) * 1000), self.add_data)
+        self.sensor_output_voltage = 4.9*((b[0]*256 + b[1])/1024.0)
+        self.acquired_data.append(d)
 
     #### 'IInstrument' interface #############################################
     name = Unicode('TGS2442_MOSLab')
     measurement_info = Dict()
-    x_units = Dict({0: 'SampleNumber', 1: 'Time'})
+    x_units = Dict({0:'SampleNumber', 1:'Time'})
     y_units = Dict({0: 'Voltage'})
     running = Bool(False)
-    output_channels = Dict({0: 'chan0'})
+    output_channels = Dict({0:'chan0'})
     enabled_channels = List(Bool)
-
 
     def start(self):
         self.running = True
@@ -143,16 +133,16 @@ class TGS2442_MOSLab(HasTraits):
         self.sample_nr = 0
         if self.serialport is None:
             try:
-                self.serialport = serial.Serial(self.portname, 57600, timeout=0.2)
+                self.serialport = serial.Serial(self.portname, 57600, timeout = 0.2)
             except Exception as e:
                 logger.error(e)
                 self.stop()
                 return
         else:
             self.serialport.open()
-        # self.serialport.write('a')
-        self.serialport.flush()
+        self.serialport.write('a')
         self.timer = Timer.singleShot(900, self.add_data)
+
 
     def stop(self):
         logger.info('stop()')
@@ -160,6 +150,7 @@ class TGS2442_MOSLab(HasTraits):
         if self.serialport is not None:
             self.serialport.write('b')
             self.serialport.close()
+            
 
     ##########################################################################
 
@@ -167,15 +158,16 @@ class TGS2442_MOSLab(HasTraits):
         if self.portname == '':
             return
         if self.running:
-            self.button_label = 'Start'
+            self.button_label= 'Start'
             self.stop()
         else:
             self.button_label = 'Stop'
             self.start()
 
 
-            # def channel_changed(self, obj, name, new):
-            #    self.enabled_channels[int(name[2:])] = new
+    #def channel_changed(self, obj, name, new):
+    #    self.enabled_channels[int(name[2:])] = new
+
 
 
 if __name__ == '__main__':
@@ -196,7 +188,7 @@ if __name__ == '__main__':
 #    d.tracer.configure_traits()
 #    d.configure_traits()
 
-# d.start()
+    #d.start()
 #    for t in d.traits():
 #        if 'mean' in t:
 #            a.config[t] = d.get(t)[t]

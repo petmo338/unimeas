@@ -1,11 +1,9 @@
-from traits.api import HasTraits, Bool, Int, List, Float, Instance,\
-    Str, Button, Dict, File, Array, on_trait_change
-from traitsui.api import Item, View, Group, HGroup, Handler, \
-    TableEditor, EnumEditor, spring, VGroup, ButtonEditor
+from traits.api import HasTraits, Bool, Int, List, Float, Instance, Str, Button, Dict, File, Array, on_trait_change
+from traitsui.api import Item, View, Group, HGroup, Handler, TableEditor, EnumEditor, spring, VGroup, ButtonEditor
 from traitsui.table_column import NumericColumn
 import logging
 import serial
-from time import sleep, time, strftime
+from time import time, strftime
 from pyface.timer.api import Timer
 import threading
 import Queue

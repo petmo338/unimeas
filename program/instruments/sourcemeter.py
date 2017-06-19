@@ -298,7 +298,10 @@ class SourceMeter(HasTraits):
             values = [float(f) for f in resp.split()]
             data.append(values[1])
             data.append(values[0])
-            data.append(values[1]/values[0])
+            if (values[0] != 0):
+                data.append(values[1]/values[0])
+            else:
+                data.append(1e9)
             self.actual_voltage = values[1]
             self.actual_current = values[0] * 1000
             self.dispatch_data(data)

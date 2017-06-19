@@ -7,7 +7,7 @@ import csv
 import time
 import logging
 import tempfile
-
+import datetime
 import ConfigParser
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ DATABASE_USER = 'sensor'
 DATABASE_PASSWORD = 'sensor'
 INFLUX_DB_DATABASE = 'sensorlab'
 
+
 class CreateMeasurementPopup(Handler):
     measurement_name = Str
     measurement_description = Str
@@ -40,11 +41,11 @@ class CreateMeasurementPopup(Handler):
 
     traits_view = View(Item('measurement_name'),
                        Item('prepend_timestamp'),
-                       Item('measurement_description', style = 'custom'),
-                       buttons = [OKButton, CancelButton], kind = 'modal')
+                       Item('measurement_description', style='custom'),
+                       buttons=[OKButton, CancelButton], kind='modal')
 
     def _measurement_name_default(self):
-        localtime   = time.localtime()
+        localtime = time.localtime()
         return time.strftime("%Y%m%d_%H%M%S_", localtime)
 
     def _prepend_timestamp_changed(self, old, new):
@@ -55,14 +56,12 @@ class CreateMeasurementPopup(Handler):
 
 
 class SQLWrapper():
-
-
     table_name = ''
 
     def initialize(self):
         try:
-            self.conn =  pg8000.connect(host=DATABASE_SERVER_HOST, \
-                user=DATABASE_USER, password=DATABASE_PASSWORD, database='postgres')
+            self.conn = pg8000.connect(host=DATABASE_SERVER_HOST, \
+                                       user=DATABASE_USER, password=DATABASE_PASSWORD, database='postgres')
         except:
             return list()
 
@@ -79,8 +78,8 @@ class SQLWrapper():
         self.cursor.close()
         self.conn.close()
         try:
-            self.conn =  pg8000.connect(host=DATABASE_SERVER_HOST, user=DATABASE_USER, \
-                password=DATABASE_PASSWORD, database=str(db))
+            self.conn = pg8000.connect(host=DATABASE_SERVER_HOST, user=DATABASE_USER, \
+                                       password=DATABASE_PASSWORD, database=str(db))
         except:
             return False
         pg8000.paramstyle = 'numeric'
@@ -90,7 +89,7 @@ class SQLWrapper():
 
     def get_measurements(self):
         query = 'select tablename from pg_catalog.pg_tables where tableowner = \'' \
-            + DATABASE_USER + '\';'
+                + DATABASE_USER + '\';'
         self.cursor.execute(query)
         try:
             result = self.cursor.fetchall()
@@ -102,8 +101,7 @@ class SQLWrapper():
             retval.append(table[0])
         return retval
 
-
-    def set_measurement(self, column_names, name, comment = '-'):
+    def set_measurement(self, column_names, name, comment='-'):
         if name[0].isdigit():
             name = TABLE_NAME_PREPEND + name
         self.column_names = column_names
@@ -112,7 +110,7 @@ class SQLWrapper():
 
         try:
             self.cursor.execute(query)
-#            self.cursor.execute("SELECT tablename FROM pg_tables where tablename like :1", (name,))
+            #            self.cursor.execute("SELECT tablename FROM pg_tables where tablename like :1", (name,))
             self.conn.commit()
         except Exception as e:
             logger.error('Trying tablename like %s', e)
@@ -126,8 +124,8 @@ class SQLWrapper():
         else:
             logger.info('Table: %s exists, appending', name)
         self.table_name = name
-        query   = "COMMENT on table " + name + " is '" + comment + "'"
-  #      self.cursor.execute(query)
+        query = "COMMENT on table " + name + " is '" + comment + "'"
+        #      self.cursor.execute(query)
         try:
             self.cursor.execute(query)
             self.conn.commit()
@@ -136,18 +134,17 @@ class SQLWrapper():
         return True
 
     def _create_table(self, column_names, name):
-#        logger.warning('column_names: %s, name %s', column_names, name)
+        #        logger.warning('column_names: %s, name %s', column_names, name)
         query = "CREATE TABLE " + name + " (uid SERIAL, ts timestamp, "
         query = query + " REAL ,".join(column_names) + " REAL)"
         try:
-            #self.cursor.execute("CREATE TABLE \'%s\'  (uid SERIAL, %s REAL)", (name, ' REAL, '.join(column_names),))
+            # self.cursor.execute("CREATE TABLE \'%s\'  (uid SERIAL, %s REAL)", (name, ' REAL, '.join(column_names),))
             self.cursor.execute(query)
             self.conn.commit()
         except Exception as e:
             logger.warning('Problems with query %s. Error %s', query, e)
             return True
         return True
-
 
     def insert_data(self, data):
         if self.table_name == '':
@@ -157,7 +154,7 @@ class SQLWrapper():
             for i in xrange(len(self.column_names)):
                 string_data.append('DEFAULT')
             query = "INSERT INTO " + str(self.table_name) + " VALUES (DEFAULT, \'now\'"
-            #query = ''
+            # query = ''
             for channel in data.keys():
                 candidates = [n for n in self.column_names if n.startswith(channel)]
 
@@ -181,7 +178,6 @@ class SQLWrapper():
 
 
 class SQLPanel(HasTraits):
-
     """############ Panel Interface ###########################3"""
 
     pane_name = Str('Save Configuration')
@@ -198,6 +194,7 @@ class SQLPanel(HasTraits):
     save_to_file = Bool
     running = Bool
     filename = File
+    adjusted_filename = Str
     available_users = List(Unicode)
     available_measurements = List(Unicode)
 
@@ -210,9 +207,9 @@ class SQLPanel(HasTraits):
                               Item('measurement_name', editor=EnumEditor(name='available_measurements'),
                                    enabled_when='not running and save_in_database'),
                               Item('measurement_description', enabled_when='False', style='custom'),
-                              Item('save_to_file', label = 'Save to file (.csv)', enabled_when='not running'),
-                              Item('filename',  style='simple', editor=FileEditor(dialog_style='save',
-                                                                                  filter=['*.csv'])
+                              Item('save_to_file', label='Save to file (.csv)', enabled_when='not running'),
+                              Item('filename', style='simple', editor=FileEditor(dialog_style='save',
+                                                                                 filter=['*.csv'])
                                    )
                               )
                        )
@@ -224,7 +221,7 @@ class SQLPanel(HasTraits):
             result = popup.measurement_name
             if result[0].isdigit():
                 result = TABLE_NAME_PREPEND + result
-            result = result.replace(' ','_')
+            result = result.replace(' ', '_')
             self.available_measurements.append(result)
             self.measurement_name = self.available_measurements[-1]
             self.measurement_description = popup.measurement_description
@@ -253,7 +250,6 @@ class SQLPanel(HasTraits):
             self.available_measurements = self.database_wrapper.get_measurements()
             self.available_measurements.insert(0, '')
 
-
     def _save_in_database_changed(self, new):
         if new:
             self.database_wrapper = SQLWrapper()
@@ -268,15 +264,15 @@ class SQLPanel(HasTraits):
     def write_to_file(self, data):
         data_list = [0] * len(self.column_names)
         for channel in data.keys():
-                candidates = [n for n in self.column_names if n.startswith(channel)]
-                for column in candidates:
-                    column_index = self.column_names.index(column)
-                    try:
-                        data_list[column_index] = data[channel][0][column[len(channel):]]
-                    except KeyError:
-                        if data[channel][1] == dict():
-                            break
-                        data_list[column_index] = data[channel][1][column[len(channel):]]
+            candidates = [n for n in self.column_names if n.startswith(channel)]
+            for column in candidates:
+                column_index = self.column_names.index(column)
+                try:
+                    data_list[column_index] = data[channel][0][column[len(channel):]]
+                except KeyError:
+                    if data[channel][1] == dict():
+                        break
+                    data_list[column_index] = data[channel][1][column[len(channel):]]
 
         if hasattr(self, 'backup_csv_writer'):
             self.backup_csv_writer.writerow(data_list)
@@ -301,9 +297,9 @@ class SQLPanel(HasTraits):
                 "measurement": system,
                 "tags": {
                     "channel": data.keys()[0],
-                    },
+                },
                 "fields": d,
-                }]
+            }]
             try:
                 self.conn_influx.write_points(influx)
             except Exception as e:
@@ -330,29 +326,40 @@ class SQLPanel(HasTraits):
 
             if self.save_in_database:
                 if len(self.measurement_name) == 0:
-                    GenericPopupMessage(message = 'No measurement selected').edit_traits()
+                    GenericPopupMessage(message='No measurement selected').edit_traits()
                     self.save_in_database = False
                 else:
                     self.database_wrapper.set_measurement(self.column_names, self.measurement_name,
-                        self.measurement_description)
+                                                          self.measurement_description)
             if self.save_to_file:
+                self._make_file_name()
                 try:
-                    self.filehandle = open(self.filename, 'a', 1)
+                    self.filehandle = open(self.adjusted_filename, 'a', 1)
                 except IOError:
-                    logger.error('Unable to open file %s', self.filename)
-                    GenericPopupMessage(message = 'Invalid filename. Stop measurement and fix').edit_traits()
+                    logger.error('Unable to open file %s', self.adjusted_filename)
+                    GenericPopupMessage(message='Invalid filename. Stop measurement and fix').edit_traits()
                 else:
                     self.csv_writer = csv.writer(self.filehandle,
-                        lineterminator='\n', quoting=csv.QUOTE_NONNUMERIC)
+                                                 lineterminator='\n', quoting=csv.QUOTE_NONNUMERIC)
                     self.csv_writer.writerow(self.column_names)
-                    logger.warning('Using ' + self.filename + ' for measurement log.')
+                    logger.warning('Using ' + self.adjusted_filename + ' for measurement log.')
                 self.column_names = self.column_names
         else:
             if hasattr(self, 'csv_writer'):
-                self.filehandle.flush()
+                self.filehandle.close()
+                del self.csv_writer
             if hasattr(self, 'backup_csv_writer'):
-                self.backup_log_file.flush()
-#        if not running and self.save_to_file:
+                self.backup_log_file.close()
+                del self.backup_csv_writer
+
+    def _make_file_name(self):
+        if self.filename.find('.csv') > 1:
+            self.adjusted_filename = self.filename[:-4] + '-' + datetime.datetime.now().time().isoformat()[:-7].replace(':','-') + '.csv'
+        else:
+            self.adjusted_filename = self.filename + '-' + datetime.datetime.now().time().isoformat()[:-7].replace(':','-')
+
+
+# if not running and self.save_to_file:
 #            del self.csv_writer
 
 
